@@ -1,0 +1,2014 @@
+<title>Capital Seasons Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: almanac strip on top (date + scrubber), map as the plate, a margin column for the selected capital and the 10-day watch list, ledger table below */
+:root{
+  --bg:#f6f7f3; --surface:#ffffff; --ink:#1d2421; --muted:#5d6862; --line:#d9ddd6; --stroke:#2a312d;
+  --spring:#a8d98a; --summer:#fbe7a1; --autumn:#f2b56b; --winter:#a9cbe8; --nodata:#e4e6e1;
+  --spring-edge:#2e8a1f; --summer-edge:#c99700; --autumn-edge:#c45f0c; --winter-edge:#1f6fc0;
+  --accent:#2f6b4f; --coldfront:#2f6bff; --warmfront:#ff3b30; --arctic:#b44dff; --heat:#e8102e;
+  --f-display:"Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121614; --surface:#1a201d; --ink:#e7ece8; --muted:#9aa59f; --line:#2c3430; --stroke:#0d100f;
+  --spring:#6f9e57; --summer:#c9b462; --autumn:#c98845; --winter:#5f8db5; --nodata:#2a302d;
+  --spring-edge:#b6f59a; --summer-edge:#ffe27a; --autumn-edge:#ffb36b; --winter-edge:#9fd0ff;
+  --accent:#86c9a6; --coldfront:#2f6bff; --warmfront:#ff3b30; --arctic:#b44dff; --heat:#e8102e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1a201d; --ink:#e7ece8; --muted:#9aa59f; --line:#2c3430; --stroke:#0d100f;
+  --spring:#6f9e57; --summer:#c9b462; --autumn:#c98845; --winter:#5f8db5; --nodata:#2a302d;
+  --spring-edge:#b6f59a; --summer-edge:#ffe27a; --autumn-edge:#ffb36b; --winter-edge:#9fd0ff;
+  --accent:#86c9a6; --coldfront:#2f6bff; --warmfront:#ff3b30; --arctic:#b44dff; --heat:#e8102e; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;grid-template-columns:minmax(0,1fr);padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 24px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.stamp{font:400 12px var(--f-mono);color:var(--muted);margin:8px 0 0;letter-spacing:.02em}
+.hdr-ctrls{display:flex;flex-wrap:wrap;gap:10px;min-width:0;max-width:100%}
+.years{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:3px}
+.years button{font:500 14px var(--f-mono);border:0;background:transparent;color:var(--muted);padding:6px 12px;border-radius:6px;cursor:pointer}
+.years button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.years button:focus-visible,.play:focus-visible,.jump:focus-visible,.watch button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.strip{display:grid;grid-template-columns:auto 1fr;gap:10px 20px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 18px}
+.datebox{display:flex;align-items:center;gap:14px}
+.play{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;display:grid;place-items:center;flex:none}
+.play svg{width:16px;height:16px;fill:currentColor}
+.date{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1;min-width:8.2ch;font-variant-numeric:tabular-nums}
+.date small{display:block;font:400 12px var(--f-mono);color:var(--muted);margin-top:4px;letter-spacing:.02em}
+.scrub{min-width:0;position:relative}
+/* the coming days on the slider: a solid band for the 10-day forecast, a striped one for the CFS outlook */
+.futband{position:absolute;left:0;right:0;top:11px;height:6px;pointer-events:none}
+.futband i{position:absolute;top:0;height:100%;border-radius:3px}
+.futband .fcz{background:color-mix(in srgb,var(--accent) 45%,transparent)}
+.futband .cfz{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--accent) 55%,transparent) 0 3px,transparent 3px 6px)}
+.wbox.outlook .wpoly{fill-opacity:.05;stroke-width:2.2;stroke-dasharray:1.5 6;stroke-linecap:round}
+.wbox.outlook .wtag{opacity:.85}
+.stamp .tag{font-family:var(--f-mono);font-weight:600;letter-spacing:.14em;fill:#ffd88a}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:28px;cursor:pointer}
+.months{position:relative;height:16px;font:400 11px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.months span{position:absolute;white-space:nowrap}
+.counts{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;border-top:1px solid var(--line);padding-top:10px}
+.chip{display:flex;align-items:center;gap:8px;font-size:14px}
+.sw{width:14px;height:14px;border-radius:3px;border:1px solid var(--stroke);flex:none;display:inline-block}
+.chip b{font:500 14px var(--f-mono);font-variant-numeric:tabular-nums}
+.key{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);align-items:center}
+.key svg{width:22px;height:14px;vertical-align:-2px;margin-right:5px}
+.jump{font:500 13px var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:4px 10px;cursor:pointer}
+
+.main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+.plate{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;min-width:0}
+svg.map{width:100%;height:auto;display:block}
+.st{stroke:var(--stroke);stroke-width:.7;stroke-linejoin:round;cursor:pointer;transition:fill .35s ease}
+.st:hover,.st.sel{stroke-width:2}
+.st:focus-visible{outline:none;stroke:var(--accent);stroke-width:2.5}
+.frontfill,.frontline,.frontsym,.frontcase,.frontalt,.frontglow,.border,.tempshade,.stamp{pointer-events:none}
+.plate{transition:background-color .3s ease}
+.plate.tv{background:radial-gradient(120% 90% at 50% 35%, #16305a 0%, #0c1c3a 55%, #07122a 100%);border-color:#0c1c3a}
+.plate.tv .lbl.out{fill:#d6e2fb}
+.plate.tv .leader{stroke:#7f97bf}
+.plate.tv .st{stroke:#0c1c3a}
+.plate.tv .border{stroke:#0c1c3a;stroke-opacity:.55;stroke-width:.8}
+.tempshade{mix-blend-mode:soft-light}
+.wbox{cursor:pointer;outline:none}
+.wpoly{fill-opacity:.10;stroke-width:3;stroke-dasharray:12 7;stroke-linejoin:round;transition:fill-opacity .15s}
+.wbox.warning .wpoly{fill-opacity:.2;stroke-width:4.5;stroke-dasharray:none}
+.whatch{pointer-events:none;stroke-width:2.6;stroke-linejoin:round;paint-order:stroke}
+.wbox.advisory .wpoly{fill-opacity:0;stroke:none}
+.wbox.advisory:hover .whatchedge,.wbox.advisory:focus-visible .whatchedge{stroke-width:8}
+.whatchedge{pointer-events:none;fill:none;stroke:#ffffff;stroke-width:5;stroke-opacity:.85;stroke-linejoin:round}
+.wbox:hover .wpoly,.wbox:focus-visible .wpoly{fill-opacity:.32}
+.wbox:focus-visible .wpoly{stroke:#fff}
+.wtag{font:700 11px var(--f-mono);letter-spacing:.06em;fill:#0c1c3a;pointer-events:none}
+.wtagbg{pointer-events:none}
+.bulletin{position:fixed;inset:0;z-index:50;background:rgba(5,12,28,.62);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.bulcard{width:min(760px,100%);max-height:100%;display:flex;flex-direction:column;background:#0d1a33;color:#e8eefc;border-radius:10px;border-top:6px solid var(--wcol,#7cc8ff);box-shadow:0 20px 60px rgba(0,0,0,.45);overflow:hidden}
+.bulhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px 10px;flex-wrap:wrap}
+.bulhead .eyebrow{color:#9fb3d9;margin:0 0 4px}
+.bulhead h2{margin:0;font-family:var(--f-display);font-size:24px;text-transform:capitalize;color:#fff}
+.bulbtns{display:flex;gap:8px}
+.bulcard .jump{background:#16284a;color:#e8eefc;border-color:#2a4373}
+#bulText{margin:0;padding:6px 18px 20px;overflow:auto;font:13px/1.55 var(--f-mono);white-space:pre;color:#dfe8fb}
+.frontglow{fill:none;stroke-width:16;stroke-opacity:.55;stroke-linejoin:round;stroke-linecap:round;filter:url(#frontblur)}
+.frontglow.cold{stroke:var(--coldfront)} .frontglow.warm{stroke:var(--warmfront)} .frontglow.still{stroke:#b9a7ff}
+.stamp{font-family:var(--f-display);font-weight:700;fill:#ffffff}
+.stamp .sub{font-family:var(--f-mono);font-weight:500;fill:#b9cdf2;letter-spacing:.12em}
+.frontcase{fill:none;stroke:#ffffff;stroke-width:8.5;stroke-linejoin:round;stroke-linecap:round;stroke-opacity:.9}
+.frontline{fill:none;stroke-width:4.4;stroke-linejoin:round;stroke-linecap:round}
+.frontline.cold{stroke:var(--coldfront)}
+.frontline.warm{stroke:var(--warmfront)}
+.frontline.still{stroke:var(--warmfront)}
+.frontalt{fill:none;stroke:var(--coldfront);stroke-width:4.4;stroke-dasharray:11 11;stroke-dashoffset:5;stroke-linecap:butt}
+.frontsym{stroke:#ffffff;stroke-width:1.6;stroke-linejoin:round}
+.frontsym.cold{fill:var(--coldfront)}
+.frontsym.warm{fill:var(--warmfront)}
+.extfill{stroke:none}
+.extfill.arctic{fill:var(--arctic);fill-opacity:.2;mix-blend-mode:screen} .extfill.heat{fill:#b8001c;fill-opacity:.5}
+.extglow{fill:none;stroke-width:18;stroke-opacity:.6;stroke-linejoin:round;stroke-linecap:round;filter:url(#frontblur)}
+.extglow.arctic{stroke:#c77dff} .extglow.heat{stroke:#ff0a2e}
+.extline{fill:none;stroke-width:4.6;stroke-linejoin:round;stroke-linecap:round}
+.extline.arctic{stroke:var(--arctic)} .extline.heat{stroke:var(--heat)}
+.extsym{stroke:#ffffff;stroke-width:1.5;stroke-linejoin:round}
+.extsym.arctic{fill:var(--arctic)} .extsym.heat{fill:var(--heat)}
+.extflake{fill:none;stroke:#ffffff;stroke-width:5;stroke-linecap:round}
+.extflake.in{stroke:var(--arctic);stroke-width:2.4}
+.extsun{fill:var(--heat);stroke:#ffffff;stroke-width:1.6}
+.extray{fill:none;stroke:var(--heat);stroke-width:2.2;stroke-linecap:round}
+/* rare temperatures: a brighter, thicker edge on the Arctic / Heat fronts, and dashed Local fronts where it is rare
+   for that place but not past 0°F / 100°F */
+.exthalo1,.exthalo2{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.exthalo1{stroke-width:13;stroke-opacity:.85}.exthalo2{stroke-width:19}
+.exthalo1.arctic{stroke:#e6c4ff}.exthalo2.arctic{stroke:#f6e9ff}
+.exthalo1.heat{stroke:#ffa62b}.exthalo2.heat{stroke:#ffe14d}
+.locfill{stroke:none}
+.rarecore{stroke:none;filter:url(#softfill)}.rarecore.arctic{fill:#e6c4ff;fill-opacity:.22;mix-blend-mode:screen}
+.locfill.arctic{fill:var(--arctic);fill-opacity:.16;mix-blend-mode:screen}.locfill.heat{fill:#b8001c;fill-opacity:.3}
+.loccase{fill:none;stroke:#ffffff;stroke-width:7;stroke-opacity:.75;stroke-linejoin:round;stroke-linecap:butt;stroke-dasharray:14 8}
+.locline{fill:none;stroke-width:4;stroke-linejoin:round;stroke-linecap:butt;stroke-dasharray:14 8}
+.locline.arctic{stroke:var(--arctic)}.locline.heat{stroke:var(--heat)}
+.locsyms{opacity:.72}
+.wbox.rare .wpoly{fill-opacity:.16;stroke-width:3;stroke-dasharray:6 5}
+.wbox.rare.t2 .wpoly{fill-opacity:.26;stroke-width:5;stroke-dasharray:none}
+#key span.dim{opacity:.38}
+.border{fill:none;stroke:var(--stroke);stroke-width:.7;stroke-linejoin:round}
+.ring{fill:none;stroke-width:7;pointer-events:none;stroke-linejoin:round}
+.ring.possible{stroke-dasharray:7 4}
+.lbl{font:600 13px var(--f-body);fill:#1d2421;pointer-events:none;text-anchor:middle;dominant-baseline:central}
+.lbl.out{fill:var(--ink);text-anchor:start}
+.lbl.tiny{font-size:9px}
+.leader{stroke:var(--muted);stroke-width:.7;fill:none}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0;line-height:1.15}
+.eyebrow{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 6px}
+.now{display:flex;align-items:center;gap:8px;margin:10px 0 12px;font-weight:600;flex-wrap:wrap}
+.now span{color:var(--muted);font-weight:400}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:14px}
+.dl dt{display:flex;align-items:center;gap:7px;color:var(--muted)}
+.dl dd{margin:0;font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.hint{color:var(--muted);font-size:14px;margin:8px 0 0}
+.pred{margin:14px 0 0;padding:10px 12px;border-radius:8px;background:var(--bg);font-size:14px;border-left:4px solid var(--edge,var(--line))}
+.pred b{font-weight:600}
+.tag{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;border:1px solid currentColor;margin-left:4px;white-space:nowrap}
+.outcome{font-size:13.5px;color:var(--muted)}
+.outcome.yes{color:var(--spring-edge)}
+.outcome.no{color:var(--autumn-edge)}
+.fc{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:12px}
+.fc div{background:var(--bg);border-radius:6px;padding:5px 2px;text-align:center;font:400 11px var(--f-mono);color:var(--muted);line-height:1.35;font-variant-numeric:tabular-nums}
+.fc b{display:block;color:var(--ink);font-weight:500;font-size:12px}
+.fc .lo{color:var(--winter-edge)}
+.watch{list-style:none;margin:6px 0 0;padding:0;display:grid}
+.watch li{border-top:1px solid var(--line)}
+.watch li:first-child{border-top:0}
+.watch button{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;padding:8px 2px;cursor:pointer;font-size:14px}
+.watch button:hover{background:var(--bg)}
+.watch .ab{font-weight:600}
+.watch .when{font:400 12.5px var(--f-mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.watch .to{display:flex;align-items:center;gap:6px;min-width:0}
+.rules{display:grid;gap:10px;font-size:13.5px;margin:0;padding:0;list-style:none}
+.rules li{display:grid;grid-template-columns:14px 1fr;gap:9px;align-items:start}
+.rules .sw{margin-top:3px}
+.rules b{font-weight:600}
+.rules span{color:var(--muted)}
+
+.ledger{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 0 6px}
+.ledger h2{font-family:var(--f-display);font-size:20px;margin:0 16px 4px}
+.ledger .hint{margin:0 16px 10px;font-size:13px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{padding:7px 16px;text-align:left;border-top:1px solid var(--line);white-space:nowrap}
+th{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);cursor:pointer;user-select:none;border-top:0}
+th[aria-sort]{color:var(--ink)}
+td.d{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.na,.fb{color:var(--muted)}
+.fb{font-style:italic}
+tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+tbody tr{cursor:pointer}
+.foot{color:var(--muted);font-size:13px;max-width:80ch;margin:0}
+.foot a{color:var(--accent)}
+@media (max-width:860px){.main{grid-template-columns:1fr}.strip{grid-template-columns:1fr}.key{margin-left:0}}
+@media (max-width:560px){.years{flex-wrap:wrap;max-width:100%}.years button{padding:6px 8px;font-size:13px}.hdr-ctrls{max-width:100%}}
+@media (prefers-reduced-motion:reduce){.st{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Capital Seasons Map</h1>
+      <p class="sub">Which season each state capital is in by your temperature rules, updated every morning with a 10-day forecast and a rough 6-month outlook. Drag the slider to move through the year.</p>
+      <p class="stamp" id="stamp"></p>
+    </div>
+    <div class="hdr-ctrls">
+      <div class="years" id="views" role="group" aria-label="Map view" hidden>
+        <button id="vStates" aria-pressed="true">States</button>
+        <button id="vFronts" aria-pressed="false">Fronts</button>
+      </div>
+      <div class="years" id="watchToggle" role="group" aria-label="Watch boxes" hidden>
+        <button id="vWatch" aria-pressed="true">Watches</button>
+      </div>
+      <div class="years" id="extToggle" role="group" aria-label="Extreme fronts" hidden>
+        <button id="vArctic" aria-pressed="true">Arctic</button>
+      </div>
+      <div class="years" id="years" role="group" aria-label="Year"></div>
+    </div>
+  </header>
+
+  <section class="strip" aria-label="Date">
+    <div class="datebox">
+      <button class="play" id="play" aria-label="Play through the year"><svg viewBox="0 0 16 16" id="playIcon"><path d="M4 2l10 6-10 6z"/></svg></button>
+      <div class="date" id="date">—<small id="dateSub"></small></div>
+    </div>
+    <div class="scrub">
+      <div class="futband" id="futband" aria-hidden="true"><i class="fcz"></i><i class="cfz"></i></div>
+      <input type="range" id="slider" min="0" max="364" value="0" aria-label="Day of year">
+      <div class="months" id="months"></div>
+    </div>
+    <div class="counts">
+      <div id="counts" style="display:contents"></div>
+      <div class="key" id="key"></div>
+    </div>
+  </section>
+
+  <div class="main">
+    <div class="plate"><svg class="map" id="map" viewBox="0 0 1000 620" role="img" aria-label="Map of US states colored by current season"></svg></div>
+    <aside class="side">
+      <div class="card" id="detail"></div>
+      <div class="card" id="watchCard"></div>
+      <div class="card">
+        <p class="eyebrow">The rules</p>
+        <ul class="rules">
+          <li><i class="sw" style="background:var(--spring)"></i><div><b>Spring</b> starts on the 3rd straight day with a high of 55°F or more. <span>Counting begins Mar 1.</span></div></li>
+          <li><i class="sw" style="background:var(--summer)"></i><div><b>Summer</b> starts on the 5th straight day with a high of 75°F or more. <span>Counting begins May 15.</span></div></li>
+          <li><i class="sw" style="background:var(--autumn)"></i><div><b>Autumn</b> starts on the first night with a low under 50°F. <span>Counting begins Sep 1.</span></div></li>
+          <li><i class="sw" style="background:var(--winter)"></i><div><b>Winter</b> starts on the first night with a low under 28°F. <span>Counting begins Nov 1.</span></div></li>
+        </ul>
+        <p class="hint">Only days on or after the start of counting count toward a streak. There is no deadline: a season keeps waiting for its conditions until the next season arrives first, and then it is skipped for that year.</p>
+        <p class="hint">Forecast outlines: likely means the forecast clears the rule by 3°F or more and the change is 3 days out or less. Anything else close to qualifying, including near misses within 3°F, is possible.</p>
+      </div>
+    </aside>
+  </div>
+
+  <section class="ledger">
+    <h2 id="ledgerTitle">Start dates</h2>
+    <p class="hint">“Skipped” means the next season’s conditions arrived first, so the capital never entered that season that year.</p>
+    <div class="tablewrap"><table id="table"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <p class="foot" id="foot"></p>
+</div>
+
+<div class="bulletin" id="bulletin" hidden role="dialog" aria-modal="true" aria-labelledby="bulTitle">
+  <div class="bulcard">
+    <div class="bulhead">
+      <div><p class="eyebrow">Season front bulletin · unofficial</p><h2 id="bulTitle">Watch</h2></div>
+      <div class="bulbtns"><button id="bulCopy" class="jump">Copy text</button><button id="bulClose" class="jump" aria-label="Close bulletin">Close</button></div>
+    </div>
+    <pre id="bulText"></pre>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script id="topo" type="application/json">__TOPO__</script>
+<script id="seasons" type="application/json">__SEASONS__</script>
+<script id="counties" type="application/json">__COUNTIES__</script>
+<script>
+const TOPO = JSON.parse(document.getElementById('topo').textContent);
+const DATA = JSON.parse(document.getElementById('seasons').textContent);
+const SEASONS = ['spring','summer','autumn','winter'];
+const NAME = {spring:'Spring',summer:'Summer',autumn:'Autumn',winter:'Winter'};
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const byFips = {}; for (const [ab,s] of Object.entries(DATA.states)) byFips[s.fips] = ab;
+const CUR_YEAR = +DATA.obsEnd.slice(0,4);
+const LAST = DATA.outlookEnd && DATA.outlookEnd > DATA.obsEnd ? DATA.outlookEnd : DATA.obsEnd;   // the slider runs to the end of the CFS outlook
+const YEARS = []; for (let y=2022; y<=+LAST.slice(0,4); y++) YEARS.push(y);
+const state = { year: CUR_YEAR, day: 0, sel: null, playing: false, sort: {key:'ab', dir:1} };
+
+const iso = d => d.toISOString().slice(0,10);
+const utc = (y,m,d) => new Date(Date.UTC(y,m,d));
+const fmt = s => { if(!s) return '—'; const [y,m,d]=s.split('-'); return `${MON[+m-1]} ${+d}${+y!==state.year?` ’${y.slice(2)}`:''}`; };
+const fmtPlain = s => { const [y,m,d]=s.split('-'); return `${MON[+m-1]} ${+d}`; };
+const dayDiff = (a,b) => Math.round((new Date(a)-new Date(b))/864e5);
+function maxDay(y){ const last = utc(y,11,31); const e = new Date(LAST+'T00:00:00Z'); return Math.round(((e<last?e:last)-utc(y,0,1))/864e5); }
+const isFuture = d => d > DATA.obsEnd;                 // forecast, then CFS outlook
+const isOutlook = d => d > (DATA.fcEnd || DATA.obsEnd);   // past the 10-day forecast: CFS only
+function curISO(){ return iso(new Date(utc(state.year,0,1).getTime()+state.day*864e5)); }
+const atLatest = () => curISO()===DATA.obsEnd;
+function seasonOn(ab, d){ const st = DATA.states[ab]; const ev = isFuture(d) && st.outlook ? st.events.concat(st.outlook) : st.events; let cur=null; for (const e of ev){ if (e[0]<=d) cur=e; else break; } return cur; }
+function startsFor(ab, y){ const o={}; for (const e of DATA.states[ab].events) if (e[2]===y) o[e[1]]={d:e[0],fb:e[3]===1};
+  for (const e of (DATA.states[ab].outlook || [])) if (e[2]===y && !o[e[1]]) o[e[1]]={d:e[0],fb:false,proj:true};   // projected by the outlook
+  return o; }
+const slotIdx = (k, y) => y*4 + SEASONS.indexOf(k);
+// A season is still pending until it starts or a later season starts first (then it was skipped).
+function windowOpen(k, y, ab){ const i = slotIdx(k,y); return !DATA.states[ab].events.some(e=>slotIdx(e[1],e[2])>i); }
+const edge = s => `var(--${s}-edge)`;
+const LOG = DATA.predLog || {};
+const hasLog = d => d===DATA.obsEnd || !!LOG[d];
+const predFor = (ab, d) => d===DATA.obsEnd ? DATA.states[ab].pred : (LOG[d] ? LOG[d][ab] : null);
+function outcome(ab, p){
+  const e = DATA.states[ab].events.find(e=>e[1]===p.season && e[2]===p.year);
+  if (!e) return {ok:null, text:windowOpen(p.season,p.year,ab)?'Hasn’t started yet':'Skipped that year'};
+  if (e[3]===1) return {ok:false, text:`Started ${fmtPlain(e[0])} by fallback`};
+  const diff = dayDiff(e[0], p.date);
+  const ok = Math.abs(diff)<=1;
+  return {ok, text:`Started ${fmtPlain(e[0])}` + (diff===0?', as forecast':diff<0?`, ${-diff} day${diff===-1?'':'s'} early`:`, ${diff} day${diff===1?'':'s'} late`)};
+}
+const nextDay = d => iso(new Date(new Date(d+'T00:00:00Z').getTime()+864e5));
+const mark = o => o.ok===true?'✓':o.ok===false?'✗':'…';
+const confTag = p => `<span class="tag" style="color:${edge(p.season)}">${p.conf}</span>`;
+function whyText(p){
+  if (p.via==='fallback') return `The ${NAME[p.season].toLowerCase()} window closes ${fmtPlain(p.date)} without a match, so the fallback date applies.`;
+  if (p.via==='near-miss') return `The forecast comes within ${DATA.margin}°F of the ${NAME[p.season].toLowerCase()} rule but doesn't quite meet it yet.`;
+  const out = dayDiff(p.date, DATA.today);
+  if (p.conf==='likely') return `The forecast clears the rule by ${p.margin}°F.`;
+  return `The forecast meets the rule${p.margin<DATA.margin?` by only ${p.margin}°F`:''}${out>DATA.nearDays?`, but it's ${out} days out`:''}.`;
+}
+
+/* ---------- map ---------- */
+const svg = d3.select('#map');
+const path = d3.geoPath();
+const feats = topojson.feature(TOPO, TOPO.objects.states).features.filter(f=>byFips[f.id]);
+const defs = svg.append('defs');
+const g = svg.append('g').attr('transform','translate(0,5)');
+const shapes = g.selectAll('path.st').data(feats).join('path')
+  .attr('class','st').attr('d',path).attr('tabindex',0)
+  .attr('aria-label',f=>`${byFips[f.id]} ${DATA.states[byFips[f.id]].city}`)
+  .on('click',(e,f)=>select(byFips[f.id]))
+  .on('keydown',(e,f)=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();select(byFips[f.id]);} });
+for (const f of feats) defs.append('clipPath').attr('id','clip'+f.id).append('path').attr('d',path(f));
+const FR = DATA.fronts;
+const fillLayer = g.append('g').attr('clip-path','url(#conusClip)').attr('display','none').style('isolation','isolate');
+const fillPaths = fillLayer.append('g');
+const tempImg = fillLayer.append('image').attr('class','tempshade').attr('x',0).attr('y',0).attr('preserveAspectRatio','none');
+const borderLayer = g.append('g').attr('display','none');
+const lineLayer = g.append('g').attr('clip-path','url(#conusClip)').attr('display','none');
+const extLayer = g.append('g').attr('clip-path','url(#conusClip)').attr('display','none');
+const extFill = extLayer.append('g'), extCore = extLayer.append('g');
+// Local fronts are masked out wherever the official Arctic / Heat front already covers the map
+const locLayer = extLayer.append('g').attr('mask','url(#offMask)');
+const locFill = locLayer.append('g'), locHalo = locLayer.append('g'), locLines = locLayer.append('g'), locSyms = locLayer.append('g').attr('class','locsyms');
+const extGlow = extLayer.append('g');
+// rare-temperature halos under the official fronts' edges, each clipped to where that tier is reached
+const haloLayer = extLayer.append('g');
+
+const extLines = extLayer.append('g');
+// Outlook veil: faint diagonal lines over the map once the slider is past the 10-day forecast
+defs.append('pattern').attr('id','veil').attr('patternUnits','userSpaceOnUse').attr('width',9).attr('height',9).attr('patternTransform','rotate(45)')
+  .append('line').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',9).attr('stroke','#ffffff').attr('stroke-width',1.6);
+const veil = g.append('path').attr('class','veil').attr('fill','url(#veil)').attr('pointer-events','none').attr('opacity',0)
+  .attr('d', path(topojson.merge(TOPO, TOPO.objects.states.geometries)));
+const ringLayer = g.append('g');
+const labelLayer = g.append('g');
+const stamp = svg.append('g').attr('class','stamp').attr('display','none');
+const stampDate = stamp.append('text').attr('x', 985).attr('y', 588).attr('text-anchor','end').attr('font-size', 46);
+const stampYear = stamp.append('text').attr('class','sub').attr('x', 985).attr('y', 612).attr('text-anchor','end').attr('font-size', 15);
+const stampTag = stamp.append('text').attr('class','tag').attr('x', 985).attr('y', 540).attr('text-anchor','end').attr('font-size', 15);
+
+const OUT = {MA:0,RI:1,CT:2,NJ:3,DE:4,MD:5,DC:6};
+const TINY = new Set(['VT','NH']);
+const NUDGE = {MI:[12,22],FL:[14,0],LA:[-10,0],KY:[6,2],ID:[0,18],CA:[-10,0],WV:[-3,4],VA:[8,0],NY:[6,4],HI:[-10,-8],MN:[-6,0],TX:[6,0]};
+for (const f of feats){
+  const ab = byFips[f.id]; const [x,y] = path.centroid(f);
+  if (ab in OUT){
+    const ly = 222 + OUT[ab]*22, lx = 930;
+    labelLayer.append('path').attr('class','leader').attr('d',`M${x},${y}L${lx-6},${ly}`);
+    labelLayer.append('circle').attr('cx',x).attr('cy',y).attr('r',1.6).attr('fill','var(--muted)');
+    labelLayer.append('text').attr('class','lbl out').attr('x',lx).attr('y',ly).text(ab);
+  } else {
+    const n = NUDGE[ab]||[0,0];
+    labelLayer.append('text').attr('class','lbl'+(TINY.has(ab)?' tiny':'')).attr('x',x+n[0]).attr('y',y+n[1]).text(ab);
+  }
+}
+
+/* ---------- weather fronts ---------- */
+// Each point has a day-by-day season that follows the weather (no calendar), so regions advance and retreat.
+// Seasons are blended into a smooth "warmth" surface (winter 0, spring/autumn 1, summer 2) on a coarse grid;
+// the winter edge sits at 0.5 and the summer edge at 1.5. Between those, spring vs autumn is whichever share wins.
+// Front symbols: where the colder side is advancing, a cold front (triangles pointing the way it moves);
+// where the warmer side is advancing, a warm front (half-circles pointing the way it moves).
+const INSET = new Set(['AK','HI']);
+// Alaska and Hawaii are their own regions: their grid cells and counties only listen to their own points
+const regionOfKey = k => (k === 'AK' || / AK$/.test(k || '')) ? 1 : (k === 'HI' || / HI$/.test(k || '')) ? 2 : 0;
+const regionOfFips = id => id.startsWith('02') ? 1 : id.startsWith('15') ? 2 : 0;
+const REGION_SCALE = [1, 5, 8];
+const REGION_SOFT = [400, 100, 3];
+const REGION_K = [1, 0.7, 0.42];         // front line and symbol size per region (Alaska and Hawaii are drawn small)      // distance softening (px²): Hawaii stays very local so its mountaintops keep their own season          // how much smaller each region's counties look than the lower 48's (for size rules)
+const TIER = { w: 0, s: 1, a: 1, u: 2 };
+let view = 'states', frac = 0, frw = null;
+const frCache = new Map();
+if (FR && FR.pts && FR.pts.length && d3.contours){
+  defs.append('clipPath').attr('id','conusClip').append('path')
+    .attr('d', path(topojson.merge(TOPO, TOPO.objects.states.geometries.filter(x=>byFips[x.id]))));
+  const blur = defs.append('filter').attr('id','softfill').attr('x','-5%').attr('y','-5%').attr('width','110%').attr('height','110%');
+  blur.append('feGaussianBlur').attr('stdDeviation', 3.5);
+  fillLayer.attr('filter','url(#softfill)');
+  borderLayer.append('path').attr('class','border').attr('d', path(topojson.mesh(TOPO, TOPO.objects.states)));
+  const P = FR.pts, SK = 10, nx = Math.ceil(975/SK), ny = Math.ceil(610/SK), n = P.length;
+  // each grid cell belongs to the region of its nearest point and only listens to that region's points
+  const W = new Float32Array(nx*ny*n), regPt = P.map(p=>regionOfKey(p[6])), cellReg = new Uint8Array(nx*ny);
+  for (let j=0;j<ny;j++) for (let i=0;i<nx;i++){
+    const cx=(i+.5)*SK, cy=(j+.5)*SK, row=(j*nx+i)*n;
+    let best = 0, bd = Infinity;
+    for (let p=0;p<n;p++){ const d2 = (P[p][0]-cx)**2 + (P[p][1]-cy)**2; if (d2 < bd){ bd = d2; best = regPt[p]; } }
+    cellReg[j*nx+i] = best;
+    for (let p=0;p<n;p++){ if (regPt[p] !== best) continue; const dx=P[p][0]-cx, dy=P[p][1]-cy; W[row+p] = Math.pow(dx*dx+dy*dy+REGION_SOFT[best], -1.25); }
+  }
+  for (const p of P){
+    const m = new Map(); for (const [o,len,c] of p[4]) for (let k=0;k<len;k++) m.set(o+k, c); p.map = m;
+    p.lo = new Map(p[7] ? p[7].l : []); p.hi = new Map(p[7] ? p[7].h : []);
+    p.rc = new Map(p[8] ? p[8].c : []); p.rh = new Map(p[8] ? p[8].h : []);     // rarity index x20 (1 = tier 1, 2 = tier 2)
+    if (p[5]){ const bin = atob(p[5]); p.temp = new Uint8Array(bin.length); for (let k=0;k<bin.length;k++) p.temp[k] = bin.charCodeAt(k); }
+  }
+  defs.append('filter').attr('id','frontblur').attr('x','-20%').attr('y','-20%').attr('width','140%').attr('height','140%')
+    .append('feGaussianBlur').attr('stdDeviation', 3);
+  const offMask = defs.append('mask').attr('id','offMask').attr('maskUnits','userSpaceOnUse').attr('x',-20).attr('y',-20).attr('width',1040).attr('height',680);
+  offMask.append('rect').attr('x',-20).attr('y',-20).attr('width',1040).attr('height',680).attr('fill','#fff');
+  offMask.append('path').attr('id','offMaskPath').attr('fill','#000').attr('fill-rule','evenodd').attr('d','');
+  // a band along the official front too, so a Local front never runs right beside it
+  offMask.append('path').attr('id','offMaskEdge').attr('fill','none').attr('stroke','#000').attr('stroke-width',30).attr('stroke-linejoin','round').attr('d','');
+  const d0 = Date.parse(FR.d0+'T00:00:00Z');
+  frw = { P, n, nx, ny, SK, W, d0, cellReg, regPt, maxOff: Math.round((Date.parse(LAST+'T00:00:00Z')-d0)/864e5),
+          gen: d3.contours().size([nx, ny]).smooth(true) };
+  document.getElementById('views').hidden = false;
+}
+function frFields(off){
+  if (frCache.has(off)) return frCache.get(off);
+  const { P, n, nx, ny, W } = frw, cells = nx*ny;
+  const code = new Array(n);
+  for (let p=0;p<n;p++) code[p] = (P[p][2] <= off && off <= P[p][3]) ? P[p].map.get(off) : undefined;
+  const tv = new Float64Array(n);
+  for (let p=0;p<n;p++){ const k = off - P[p][2]; tv[p] = (code[p] && P[p].temp && k >= 0 && k < P[p].temp.length) ? P[p].temp[k] - 60 : NaN; }
+  const lo = new Float64Array(n), hi = new Float64Array(n), rc = new Float64Array(n), rh = new Float64Array(n);
+  for (let p=0;p<n;p++){ lo[p] = P[p].lo.get(off) ?? 5; hi[p] = P[p].hi.get(off) ?? 95; rc[p] = (P[p].rc.get(off) ?? 0)/20; rh[p] = (P[p].rh.get(off) ?? 0)/20; }
+  const tier = new Float64Array(cells), mild = new Float64Array(cells), temp = new Float64Array(cells);
+  const arctic = new Float64Array(cells), heat = new Float64Array(cells), rareC = new Float64Array(cells), rareH = new Float64Array(cells);
+  for (let q=0;q<cells;q++){
+    let den=0, t=0, sp=0, au=0, tw=0, ts=0, sl=0, sh=0, sc=0, su=0; const row=q*n;
+    for (let p=0;p<n;p++){
+      const c = code[p]; if (!c) continue;
+      const w = W[row+p]; den += w; t += w*TIER[c];
+      if (c==='s') sp += w; else if (c==='a') au += w;
+      sl += w*lo[p]; sh += w*hi[p]; sc += w*rc[p]; su += w*rh[p];
+      if (tv[p] === tv[p]){ tw += w; ts += w*tv[p]; }
+    }
+    tier[q] = den ? t/den : 1; mild[q] = den ? (sp-au)/den : 0; temp[q] = tw ? ts/tw : 55;
+    arctic[q] = den ? -sl/den : -5; heat[q] = den ? sh/den : 95;
+    rareC[q] = den ? sc/den : 0; rareH[q] = den ? su/den : 0;
+  }
+  const f = { tier, mild, temp, arctic, heat, rareC, rareH };
+  frCache.set(off, f); if (frCache.size > 16) frCache.delete(frCache.keys().next().value);
+  return f;
+}
+const MIN_AREA = 900;            // px²: patches and holes smaller than this are dropped so regions stay contiguous
+const ringArea = r => { let a = 0; for (let i=0, j=r.length-1; i<r.length; j=i++) a += (r[j][0]+r[i][0])*(r[j][1]-r[i][1]); return Math.abs(a/2); };
+function ringPaths(mp){
+  const k = frw.SK, rings = [];
+  for (const poly of mp.coordinates){
+    const outer = poly[0].map(p=>[p[0]*k, p[1]*k]);
+    const minA = [MIN_AREA, 160, 30][sample(frw.cellReg, outer[0][0], outer[0][1])];   // Alaska and Hawaii are drawn small
+    if (ringArea(outer) < minA) continue;
+    rings.push(outer);
+    for (const hole of poly.slice(1)){ const h = hole.map(p=>[p[0]*k, p[1]*k]); if (ringArea(h) >= minA) rings.push(h); }
+  }
+  return rings;
+}
+const toD = rings => rings.map(r=>'M'+r.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L')+'Z').join('');
+const lineD = pts => 'M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L');
+function sample(arr, x, y){
+  const i = Math.max(0, Math.min(frw.nx-1, Math.floor(x/frw.SK))), j = Math.max(0, Math.min(frw.ny-1, Math.floor(y/frw.SK)));
+  return arr[j*frw.nx+i];
+}
+// Cut each front ring into ~34px pieces, decide for each whether the cold or warm side is advancing, smooth those
+// decisions so fronts come in long steady stretches, then draw one line per stretch with its symbols.
+// Start every ring at the same place (its westernmost point), so symbols spaced along it stay put from frame to
+// frame instead of hopping whenever the contour happens to begin somewhere else.
+function anchorRing(r){
+  const closed = r.length > 1 && r[0][0] === r[r.length-1][0] && r[0][1] === r[r.length-1][1];
+  const pts = closed ? r.slice(0, -1) : r;
+  let k = 0; for (let i=1;i<pts.length;i++) if (pts[i][0] < pts[k][0] - 1e-6 || (Math.abs(pts[i][0]-pts[k][0]) < 1e-6 && pts[i][1] < pts[k][1])) k = i;
+  const out = pts.slice(k).concat(pts.slice(0, k));
+  out.push(out[0]);
+  return out;
+}
+// Walk a ring by distance: evenly spaced pieces whose ends and middles sit at exact distances along the line
+function arcPieces(r, STEP){
+  const cum = [0]; for (let i=1;i<r.length;i++) cum.push(cum[i-1] + Math.hypot(r[i][0]-r[i-1][0], r[i][1]-r[i-1][1]));
+  const L = cum[cum.length-1]; if (!(L > 0)) return [];
+  let seg = 0;
+  const at = s => { s = Math.max(0, Math.min(L, s)); while (seg > 0 && cum[seg] > s) seg--; while (seg < r.length-2 && cum[seg+1] < s) seg++;
+    const a = r[seg], b = r[seg+1], len = cum[seg+1]-cum[seg] || 1, u = (s - cum[seg]) / len; return [a[0] + (b[0]-a[0])*u, a[1] + (b[1]-a[1])*u]; };
+  // fixed spacing from the anchor; the leftover bit at the end is one shorter piece, so a growing front only
+  // moves its last symbol instead of re-spacing all of them
+  const cuts = []; for (let x=0; x < L - 1e-6; x += STEP) cuts.push(x); cuts.push(L);
+  if (cuts.length > 2 && cuts[cuts.length-1] - cuts[cuts.length-2] < STEP*0.35) cuts.splice(cuts.length-2, 1);
+  const pieces = [];
+  let vi = 1;
+  for (let j=0;j<cuts.length-1;j++){
+    const a = cuts[j], b = cuts[j+1], mid = a + Math.min(STEP, b - a)/2;
+    const pts = [at(a)];
+    while (vi < r.length-1 && cum[vi] <= a) vi++;
+    for (let k=vi; k<r.length-1 && cum[k] < b; k++) pts.push(r[k]);
+    pts.push(at(b));
+    const m = at(mid), p0 = at(mid - 6), p1 = at(mid + 6);
+    let tx = p1[0]-p0[0], ty = p1[1]-p0[1]; const tl = Math.hypot(tx, ty) || 1;
+    pieces.push(Object.assign(pts, { m, tx: tx/tl, ty: ty/tl }));
+  }
+  return pieces;
+}
+function frontPieces(rings, tier, dT, out){
+  for (let r of rings){
+    if (r.length < 3) continue;
+    r = anchorRing(r);
+    const K = REGION_K[sample(frw.cellReg, r[0][0], r[0][1])];
+    const pieces = arcPieces(r, 46*K);
+    if (!pieces.length) continue;
+    for (const pc of pieces){
+      const { m, tx, ty } = pc;
+      let wx = -ty, wy = tx;
+      if (sample(tier, m[0]+wx*8, m[1]+wy*8) < sample(tier, m[0]-wx*8, m[1]-wy*8)){ wx = -wx; wy = -wy; }   // (wx,wy) -> warm side
+      Object.assign(pc, { wx, wy, motion: sample(dT, m[0], m[1]) });
+    }
+    // smooth motion along the ring (5-piece window), then classify with a dead band
+    const n = pieces.length;
+    const sm = pieces.map((_, i)=>{ let s = 0, c = 0; for (let d=-2; d<=2; d++){ const q = pieces[(i+d+n)%n]; s += q.motion; c++; } return s/c; });
+    let types = sm.map(v => v < -0.012 ? 'cold' : v > 0.012 ? 'warm' : 'still');
+    // absorb runs shorter than 3 pieces into their neighbours
+    for (let pass=0; pass<2; pass++){
+      for (let i=0;i<n;i++){
+        let j = i; while (j+1 < n && types[j+1] === types[i]) j++;
+        if (j-i+1 < 3 && n > 3){ const nb = types[(i-1+n)%n] !== types[i] ? types[(i-1+n)%n] : types[(j+1)%n]; for (let k=i;k<=j;k++) types[k] = nb; }
+        i = j;
+      }
+    }
+    // a lone stalled piece between moving stretches takes its neighbours' type
+    for (let i=0;i<n;i++){
+      if (types[i] !== 'still') continue;
+      const pa = types[(i-1+n)%n], pb = types[(i+1)%n];
+      if (pa !== 'still' && pb !== 'still') types[i] = pa;
+    }
+    // join consecutive pieces of one type into a single stretch
+    let i = 0;
+    while (i < n){
+      let j = i; while (j+1 < n && types[j+1] === types[i]) j++;
+      const pts = []; for (let k=i;k<=j;k++){ const pc = pieces[k]; for (let q=(k===i?0:1); q<pc.length; q++) pts.push(pc[q]); }
+      out.lines.push({ type: types[i], d: lineD(pts), k: K });
+      for (let k=i;k<=j;k++){
+        const { m, tx, ty, wx, wy } = pieces[k];
+        if (types[i] === 'cold'){        // triangle toward the warm side: the way the cold air is moving
+          out.syms.push({ type: 'cold', k: K, d: `M${(m[0]-tx*10*K).toFixed(1)},${(m[1]-ty*10*K).toFixed(1)}L${(m[0]+wx*15*K).toFixed(1)},${(m[1]+wy*15*K).toFixed(1)}L${(m[0]+tx*10*K).toFixed(1)},${(m[1]+ty*10*K).toFixed(1)}Z` });
+        } else if (types[i] === 'warm'){ // half-circle toward the cold side: the way the warm air is moving
+          const ptsC = [];
+          for (let s=0;s<=12;s++){ const a = Math.PI*s/12; ptsC.push([m[0] + tx*10*K*Math.cos(a) - wx*10*K*Math.sin(a), m[1] + ty*10*K*Math.cos(a) - wy*10*K*Math.sin(a)]); }
+          out.syms.push({ type: 'warm', k: K, d: lineD(ptsC)+'Z' });
+        }
+      }
+      i = j + 1;
+    }
+  }
+}
+// ----- Arctic Front (lows below 0°F) and Heat Front (highs above 100°F): their own lines and symbols
+// Arctic: icicle spikes and snowflakes. Heat: flames and suns. Spikes and flames point the way the edge is moving.
+let showArctic = true; const showHeat = false;     // heat fronts are off the map; rare heat alerts stay
+function extremeFront(rings, field, dF, kind, out){
+  for (let r of rings){
+    if (r.length < 3) continue;
+    r = anchorRing(r);
+    const rg = sample(frw.cellReg, r[0][0], r[0][1]), K = REGION_K[rg], STEP = 46*K;
+    const minA = [MIN_AREA, 160, 30][rg], ar = ringArea(r);
+    const op = Math.min(1, Math.max(0, (ar - minA) / (5*minA)));     // small areas fade in and out instead of popping
+    const s0 = out.syms.length, f0 = out.flakes.length, u0 = out.suns.length;
+    let k = 0; const f2 = v=>v.toFixed(1);
+    for (const pc of arcPieces(r, STEP)){                        // symbols at exact distances from the anchor
+      const { m, tx, ty } = pc;
+      let cx = -ty, cy = tx;                                     // (cx,cy) -> toward the core (stronger side)
+      if (sample(field, m[0]+cx*8, m[1]+cy*8) < sample(field, m[0]-cx*8, m[1]-cy*8)){ cx = -cx; cy = -cy; }
+      const grow = sample(dF, m[0], m[1]) >= -0.3;               // growing or holding: the edge pushes outward
+      const dx = grow ? -cx : cx, dy = grow ? -cy : cy;          // the way it is moving
+      const P = (u, v)=>[m[0] + (tx*u + dx*v)*K, m[1] + (ty*u + dy*v)*K], pt = q=>f2(q[0])+','+f2(q[1]);
+      if (kind === 'arctic'){
+        if (k % 2 === 0){                                        // double icicle
+          for (const [o, h] of [[-6, 22], [6, 16]]){
+            out.syms.push({ type: kind, d: `M${pt(P(o-4.5,0))}L${pt(P(o,h))}L${pt(P(o+4.5,0))}Z` });
+          }
+        } else {                                                 // snowflake sitting on the line
+          let d = '';
+          for (let s=0;s<3;s++){ const an = Math.PI*s/3 + 0.26, ux = Math.cos(an)*9*K, uy = Math.sin(an)*9*K;
+            d += `M${f2(m[0]-ux)},${f2(m[1]-uy)}L${f2(m[0]+ux)},${f2(m[1]+uy)}`; }
+          out.flakes.push({ d, k: K });
+        }
+      } else {
+        if (k % 2 === 0){                                        // flame
+          const b1 = P(-9,0), b2 = P(9,0), tip = P(3,24);
+          out.syms.push({ type: kind, d: `M${pt(b1)}C${pt(P(-12,9))} ${pt(P(-4,14))} ${pt(P(-2,18))}C${pt(P(-1,13))} ${pt(P(1.5,15))} ${pt(tip)}C${pt(P(8,16))} ${pt(P(13,8))} ${pt(b2)}Z` });
+        } else {                                                 // sun
+          let rays = '';
+          for (let s=0;s<8;s++){ const an = Math.PI*s/4, ux = Math.cos(an), uy = Math.sin(an);
+            rays += `M${f2(m[0]+ux*9.5*K)},${f2(m[1]+uy*9.5*K)}L${f2(m[0]+ux*14*K)},${f2(m[1]+uy*14*K)}`; }
+          out.suns.push({ c: m, rays, k: K });
+        }
+      }
+      k++;
+    }
+    for (let q=s0;q<out.syms.length;q++) out.syms[q].op = op;
+    for (let q=f0;q<out.flakes.length;q++) out.flakes[q].op = op;
+    for (let q=u0;q<out.suns.length;q++) out.suns[q].op = op;
+    out.lines.push({ type: kind, d: lineD(r.concat([r[0]])), k: K, op, pts: r.concat([r[0]]) });
+  }
+}
+// lines and symbols in Alaska and Hawaii get thinner strokes to match their smaller drawing
+const BASE_W = { frontglow: 16, frontcase: 8.5, frontline: 4.4, frontalt: 4.4, frontsym: 1.6, extglow: 18, extline: 4.6, extsym: 1.5, extflake: 5, extray: 2.2, extsun: 1.4,
+                 exthalo1: 15, exthalo2: 23, loccase: 7, locline: 4 };
+function scaleStrokes(layer){
+  layer.selectAll('path, circle').each(function(x){
+    const cls = (this.getAttribute('class') || '').split(' ');
+    const base = BASE_W[cls[0]] ?? null; if (base === null) return;
+    const k = x && x.k && x.k < 1 ? x.k : 1;
+    let w = base * k; if (cls[0] === 'extflake' && cls[1] === 'in') w = 2.4 * k;
+    this.style.strokeWidth = k < 1 ? w : '';
+    if (cls[0] === 'frontalt') this.style.strokeDasharray = k < 1 ? `${11*k} ${11*k}` : '';
+    if (cls[0] === 'loccase' || cls[0] === 'locline') this.style.strokeDasharray = k < 1 ? `${14*k} ${8*k}` : '';
+  });
+}
+function paintExtremes(TB){
+  const out = { lines: [], syms: [], flakes: [], suns: [] }, fills = [];
+  for (const [kind, on, thr] of [['arctic', showArctic, 0], ['heat', showHeat, 100]]){
+    if (!on) continue;
+    const v = TB.val(kind), d = TB.rate(kind);
+    const rings = ringPaths(frw.gen.contour(v, thr));
+    if (!rings.length) continue;
+    const big = rings.reduce((m, r)=>Math.max(m, ringArea(r) / ([MIN_AREA, 160, 30][sample(frw.cellReg, r[0][0], r[0][1])] * 6)), 0);
+    fills.push({ kind, d: toD(rings), op: Math.min(1, big) });
+    extremeFront(rings, v, d, kind, out);
+  }
+  // ---- rare cold, judged against each place's own history (heat fronts are off the map) ----
+  // rarity index 1 = coldest 1% of that place's days, 2 = coldest 0.25%
+  const loc = { lines: [], syms: [], flakes: [], suns: [] }, locFills = [], cores = [], halos = [];
+  frw.rareOn = { arctic: false };
+  if (showArctic){
+    const kind = 'arctic', key = 'rareC';
+    const v = TB.val(key), d = TB.rate(key);
+    const minA = r => [MIN_AREA, 160, 30][sample(frw.cellReg, r[0][0], r[0][1])];
+    const r1 = ringPaths(frw.gen.contour(v, 1)).filter(r=>ringArea(r) >= 3*minA(r));     // no faded scraps
+    const r2 = ringPaths(frw.gen.contour(v, 2));
+    if (r1.length){
+      frw.rareOn.arctic = true;
+      locFills.push({ kind, d: toD(r1) });
+      extremeFront(r1, v, d, kind, loc);                     // Local Arctic front: dashed, outside the official front
+    }
+    if (r2.length) cores.push({ kind, d: toD(r2) });         // the rarest 0.25%: a soft brighter patch, no line
+    // official front: an even glow along the stretches where that cold is rare too (wider where it is the rarest)
+    for (const l of out.lines){
+      if (l.type !== kind || !l.pts) continue;
+      for (const [t, lim] of [[1, 1], [2, 2]]){
+        let run = [];
+        const flush = ()=>{ if (run.length >= 3) halos.push({ t, d: lineD(run), k: l.k, op: l.op }); run = []; };
+        for (const p of l.pts){ if (sample(v, p[0], p[1]) >= lim) run.push(p); else flush(); }
+        flush();
+      }
+    }
+  }
+  d3.select('#offMaskPath').attr('d', fills.map(x=>x.d).join(''));
+  d3.select('#offMaskEdge').attr('d', out.lines.map(l=>l.d).join(''));
+  locFill.selectAll('path.locfill').data(locFills).join('path').attr('class', x=>'locfill '+x.kind).attr('fill-rule','evenodd').attr('d', x=>x.d);
+  locHalo.selectAll('path').data([]).join('path');
+  locLines.selectAll('path.loccase').data(loc.lines).join('path').attr('class','loccase').attr('d', x=>x.d);
+  locLines.selectAll('path.locline').data(loc.lines).join('path').attr('class', x=>'locline '+x.type).attr('d', x=>x.d);
+  locSyms.selectAll('path.extsym').data(loc.syms).join('path').attr('class', x=>'extsym '+x.type).attr('d', x=>x.d);
+  locSyms.selectAll('path.extflake').data(loc.flakes.flatMap(f=>[{d: f.d, k: f.k, op: f.op, c:'extflake'}, {d: f.d, k: f.k, op: f.op, c:'extflake in'}])).join('path').attr('class', x=>x.c).attr('d', x=>x.d);
+  extCore.selectAll('path').data(cores).join('path').attr('class', x=>'rarecore '+x.kind).attr('fill-rule','evenodd').attr('d', x=>x.d);
+  haloLayer.selectAll('path').data(halos.sort((a,b)=>a.t-b.t)).join('path').attr('class', x=>`exthalo${x.t} arctic`).attr('d', x=>x.d);
+  for (const L of [locLines, locSyms, haloLayer]){
+    scaleStrokes(L);
+    L.selectAll('path, circle').attr('opacity', x=>x && x.op !== undefined && x.op < 1 ? x.op : null);
+  }
+  frw.extOn = { arctic: fills.some(x=>x.kind==='arctic'), heat: fills.some(x=>x.kind==='heat') };
+  frw.haloOn = halos.length;
+  extFill.selectAll('path').data(fills).join('path').attr('class', x=>'extfill '+x.kind).attr('fill-rule','evenodd').attr('d', x=>x.d);
+  extGlow.selectAll('path.extglow').data(out.lines).join('path').attr('class', x=>'extglow '+x.type).attr('d', x=>x.d);
+  extLines.selectAll('path.frontcase').data(out.lines).join('path').attr('class','frontcase').attr('d', x=>x.d);
+  extLines.selectAll('path.extsym').data(out.syms).join('path').attr('class', x=>'extsym '+x.type).attr('d', x=>x.d);
+  extLines.selectAll('path.extline').data(out.lines).join('path').attr('class', x=>'extline '+x.type).attr('d', x=>x.d);
+  extLines.selectAll('path.extflake').data(out.flakes.flatMap(f=>[{d: f.d, k: f.k, op: f.op, c:'extflake'}, {d: f.d, k: f.k, op: f.op, c:'extflake in'}])).join('path').attr('class', x=>x.c).attr('d', x=>x.d);
+  extLines.selectAll('path.extray').data(out.suns).join('path').attr('class','extray').attr('d', x=>x.rays);
+  extLines.selectAll('circle.extsun').data(out.suns).join('circle').attr('class','extsun').attr('cx', x=>x.c[0]).attr('cy', x=>x.c[1]).attr('r', x=>7*x.k);
+  scaleStrokes(extLines); scaleStrokes(extGlow);
+  extGlow.selectAll('path').attr('opacity', x=>x && x.op !== undefined && x.op < 1 ? x.op : null);
+  extLines.selectAll('path, circle').attr('opacity', x=>x && x.op !== undefined && x.op < 1 ? x.op : null);
+  extFill.selectAll('path').attr('opacity', x=>x.op < 1 ? x.op : null);
+}
+// ----- Jan 1 / Jul 1 turnover: the old spring or autumn color fades out over the new one
+let ripple = null, lastFrontDate = null;
+const reducedMotion = (()=>{ try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } })();
+
+function startRipple(oldLabel){
+  if (reducedMotion || !frw) return;
+  ripple = { t0: performance.now(), dur: 500, old: oldLabel, op: 1 };
+  paintFronts();
+  requestAnimationFrame(rippleStep);
+}
+function rippleStep(now){
+  if (!ripple) return;
+  const k = Math.min(1, (now - ripple.t0) / ripple.dur);
+  ripple.op = 1 - k*k*(3-2*k);
+  fillPaths.selectAll('path').filter(x=>x[0]==='ripple').attr('opacity', ripple.op);
+  if (k < 1) requestAnimationFrame(rippleStep);
+  else { ripple = null; paintFronts(); }
+}
+function checkTurnover(iso){
+  if (lastFrontDate && lastFrontDate.slice(0,4) !== iso.slice(0,4)) startRipple(iso > lastFrontDate ? 'autumn' : 'spring');
+  lastFrontDate = iso;
+}
+
+// Smooth motion through time: each field follows a curve through the days before and after (Catmull-Rom), so the
+// fronts move at a steady pace instead of slowing to a stop at every day. Values stay between the two days' values.
+function timeBlend(off, t){
+  const cl = o => Math.max(0, Math.min(frw.maxOff, o));
+  const F = [frFields(cl(off-1)), frFields(cl(off)), frFields(cl(off+1)), frFields(cl(off+2))];
+  const cells = frw.nx*frw.ny, memo = {}, dmemo = {};
+  const t2 = t*t, t3 = t2*t;
+  return {
+    F,
+    val(name){
+      if (memo[name]) return memo[name];
+      const [a, b, c, d] = F.map(x=>x[name]), out = new Float64Array(cells);
+      for (let q=0;q<cells;q++){
+        const p0 = a[q], p1 = b[q], p2 = c[q], p3 = d[q];
+        let v = 0.5*(2*p1 + (p2-p0)*t + (2*p0 - 5*p1 + 4*p2 - p3)*t2 + (3*p1 - p0 - 3*p2 + p3)*t3);
+        const lo = p1 < p2 ? p1 : p2, hi = p1 < p2 ? p2 : p1;
+        out[q] = v < lo ? lo : v > hi ? hi : v;
+      }
+      return memo[name] = out;
+    },
+    rate(name){       // change per day, blended smoothly so front types do not flip right at midnight
+      if (dmemo[name]) return dmemo[name];
+      const [a, b, c, d] = F.map(x=>x[name]), out = new Float64Array(cells);
+      for (let q=0;q<cells;q++) out[q] = (1-t)*(c[q]-a[q])/2 + t*(d[q]-b[q])/2;
+      return dmemo[name] = out;
+    }
+  };
+}
+let prefetchTimer = null;
+function prefetchAhead(off){      // work out the next few days in spare moments, so a new day never causes a hitch
+  if (prefetchTimer) return;
+  const idle = fn => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 120 }) : setTimeout(fn, 30));
+  const todo = [off+3, off+4, off+2].filter(o=>o >= 0 && o <= frw.maxOff && !frCache.has(o));
+  const iso = o => new Date(frw.d0 + o*864e5).toISOString().slice(0,10);
+  const wtodo = (showWatches && typeof watchesFor === 'function')
+    ? [off+1, off+2].map(iso).filter(d=>WLOG[d] && !boxCache.has(d)) : [];
+  if (!todo.length && !wtodo.length) return;
+  prefetchTimer = idle(()=>{
+    prefetchTimer = null;
+    if (todo.length) frFields(todo[0]); else watchesFor(wtodo[0]);
+    prefetchAhead(off);
+  });
+}
+
+function paintFronts(){
+  const off = Math.round((Date.parse(curISO()+'T00:00:00Z') - frw.d0)/864e5);
+  const TB = timeBlend(off, frac), f = frac;
+  const [, A, B] = TB.F;
+  const cells = frw.nx*frw.ny;
+  const tier = TB.val('tier'), mild = TB.val('mild'), dT = TB.rate('tier');
+  const neg = new Float64Array(cells); for (let q=0;q<cells;q++) neg[q] = -tier[q];
+  prefetchAhead(off);
+  const springR = ringPaths(frw.gen.contour(mild, 0.0001));
+  const winterR = ringPaths(frw.gen.contour(neg, -0.5));
+  const summerR = ringPaths(frw.gen.contour(tier, 1.5));
+  const allR = [[[0,0],[1000,0],[1000,640],[0,640]]];
+  const layers = [['autumn', allR], ['spring', springR]];
+  if (ripple) layers.push(['ripple', allR]);
+  layers.push(['winter', winterR], ['summer', summerR]);
+  fillPaths.selectAll('path').data(layers, x=>x[0]).join('path')
+    .attr('class','frontfill').attr('fill-rule','evenodd').attr('fill', x=>`var(--${x[0] === 'ripple' ? ripple.old : x[0]})`)
+    .attr('opacity', x=>x[0] === 'ripple' ? ripple.op : null).attr('d', x=>toD(x[1])).order();
+  const out = { lines: [], syms: [] };
+  frontPieces(winterR, tier, dT, out);
+  const before = out.lines.length;
+  frontPieces(summerR, tier, dT, out);
+  const sumLines = out.lines.slice(before);
+  if (sumLines.length){
+    const longest = sumLines.reduce((a,l)=>l.d.length > a.d.length ? l : a);
+    const nums = longest.d.slice(1).split('L').map(s=>s.split(',').map(Number));
+    frw.summerFrontMid = nums[Math.floor(nums.length/2)];
+  } else if (summerR.length){
+    const all = summerR.flat(); frw.summerFrontMid = [all.reduce((s,p)=>s+p[0],0)/all.length, all.reduce((s,p)=>s+p[1],0)/all.length];
+  } else frw.summerFrontMid = null;
+  // temperature shading: one fixed scale everywhere, 55°F neutral; warmer lightens the season color, colder darkens it
+  if (!frw.cv){ frw.cv = document.createElement('canvas'); frw.cv.width = frw.nx; frw.cv.height = frw.ny; frw.ctx = frw.cv.getContext('2d'); frw.img = frw.ctx.createImageData(frw.nx, frw.ny); }
+  const px = frw.img.data, tempB = TB.val('temp');
+  for (let q=0;q<cells;q++){
+    const tq = tempB[q];
+    const g8 = Math.round(255 * Math.max(0.06, Math.min(0.94, 0.5 + (tq - 55) / 80)));
+    px[4*q] = px[4*q+1] = px[4*q+2] = g8; px[4*q+3] = 255;
+  }
+  frw.ctx.putImageData(frw.img, 0, 0);
+  tempImg.attr('width', frw.nx*frw.SK).attr('height', frw.ny*frw.SK).attr('href', frw.cv.toDataURL());
+  lineLayer.selectAll('path.frontglow').data(out.lines).join('path').attr('class', x=>'frontglow '+x.type).attr('d', x=>x.d);
+  lineLayer.selectAll('path.frontcase').data(out.lines).join('path').attr('class','frontcase').attr('d', x=>x.d);
+  lineLayer.selectAll('path.frontsym').data(out.syms).join('path').attr('class', x=>'frontsym '+x.type).attr('d', x=>x.d);
+  lineLayer.selectAll('path.frontline').data(out.lines).join('path').attr('class', x=>'frontline '+x.type).attr('d', x=>x.d);
+  lineLayer.selectAll('path.frontalt').data(out.lines.filter(x=>x.type==='still')).join('path').attr('class','frontalt').attr('d', x=>x.d);
+  scaleStrokes(lineLayer);
+  paintExtremes(TB);
+  shapes.attr('fill', 'var(--autumn)');
+  const dd = new Date(curISO()+'T00:00:00Z');
+  stampDate.text(`${MON[dd.getUTCMonth()].toUpperCase()} ${dd.getUTCDate()}`);
+  stampYear.text(`${dd.toLocaleDateString('en-US',{weekday:'long',timeZone:'UTC'}).toUpperCase()} · ${dd.getUTCFullYear()}`);
+  outlookLook(curISO(), frac);
+}
+
+/* ---------- watch & warning boxes ---------- */
+// Boxes come from each morning's forecast (DATA.watchLog, keyed by map date). Clicking one opens a mock bulletin,
+// written in teletype style but clearly marked as this map's own unofficial product.
+const WATCH_COL = { winter: '#7cc8ff', spring: '#74e07f', summer: '#ffd23f', autumn: '#ff9a3c' };
+const RARE = {                  // hatch colors: a brighter version of the season each one pretends to be
+  falsespring: { name: 'False Spring',  col: '#8cff6e' },
+  falsesummer: { name: 'False Summer',  col: '#ffe347' },
+  falseautumn: { name: 'False Autumn',  col: '#ff9433' },
+  falsewinter: { name: 'False Winter',  col: '#8fd8ff' }
+};
+const EXC_NAME = { latefreeze: 'Late Freeze', summerreturns: 'Summer Returns' };
+// rare temperatures in the forecast (each place against its own history): tier 1 = advisory, tier 2 = warning
+const RARE_TEMP = {
+  rarecold: { name: 'Rare Cold', col: '#c77dff', front: 'Arctic', line: 0, cold: true },
+  rareheat: { name: 'Rare Heat', col: '#ff5a4f', front: 'Heat', line: 100, cold: false }
+};
+const alertName = x => x.lv === 'rare' ? RARE_TEMP[x.s].name : x.lv === 'advisory' ? RARE[x.s].name : (x.ex && EXC_NAME[x.ex]) ? EXC_NAME[x.ex] : NAME[x.s];
+const alertCol = x => x.lv === 'rare' ? RARE_TEMP[x.s].col : x.lv === 'advisory' ? RARE[x.s].col : WATCH_COL[x.s];
+const levelWord = x => x.lv === 'rare' ? (x.tier === 2 ? 'warning' : 'advisory') : x.lv;
+const STATE_NAME = {AL:'Alabama',AK:'Alaska',HI:'Hawaii',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'the District of Columbia',FL:'Florida',GA:'Georgia',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming'};
+const WLOG = DATA.watchLog || {};
+let showWatches = true;
+const watchLayer = svg.append('g').attr('class','watchlayer').attr('transform','translate(0,5)').attr('display','none');
+for (const [k, v] of Object.entries(RARE)){
+  // two-tone stripes: bright season color alternating with dark navy, readable on any fill
+  const pat = defs.append('pattern').attr('id','hatch-'+k).attr('patternUnits','userSpaceOnUse').attr('width',12).attr('height',12).attr('patternTransform','rotate(45)');
+  pat.append('rect').attr('width',12).attr('height',12).attr('fill','#0c1c3a').attr('fill-opacity',0.26);
+  pat.append('rect').attr('width',6).attr('height',12).attr('fill',v.col).attr('fill-opacity',0.82);
+}
+const projUS = d3.geoAlbersUsa().scale(1300).translate([487.5, 305]);
+for (const [id, set] of [['vArctic', v=>showArctic=v]]){
+  const b = document.getElementById(id);
+  if (b) b.onclick = ()=>{ const on = b.getAttribute('aria-pressed') !== 'true'; set(on); b.setAttribute('aria-pressed', on); render(); };
+}
+const watchBtn = document.getElementById('vWatch');
+if (watchBtn){
+  watchBtn.onclick = ()=>{ showWatches = !showWatches; watchBtn.setAttribute('aria-pressed', showWatches); render(); };
+}
+// Point key -> index (capitals carry their state code, cities "Name, ST")
+const keyIdx = new Map();
+if (frw) frw.P.forEach((p, i)=>{ if (p[6]) keyIdx.set(p[6], i); });
+const isCapitalKey = k => /^[A-Z]{2}$/.test(k);
+function rdp(pts, eps){                 // Douglas-Peucker: straight-edged outline
+  if (pts.length < 4) return pts;
+  const [a, b] = [pts[0], pts[pts.length-1]];
+  let idx = -1, best = 0;
+  for (let i=1;i<pts.length-1;i++){
+    const p = pts[i], dx = b[0]-a[0], dy = b[1]-a[1], L = Math.hypot(dx,dy) || 1;
+    const dist = Math.abs(dy*p[0] - dx*p[1] + b[0]*a[1] - b[1]*a[0]) / L;
+    if (dist > best){ best = dist; idx = i; }
+  }
+  if (best <= eps) return [a, b];
+  const l = rdp(pts.slice(0, idx+1), eps), r = rdp(pts.slice(idx), eps);
+  return l.slice(0, -1).concat(r);
+}
+function simplifyRing(r){
+  // split the closed ring at its two farthest-apart points so the simplification has fixed ends
+  let far = 0, fi = 0;
+  for (let i=1;i<r.length;i++){ const d = Math.hypot(r[i][0]-r[0][0], r[i][1]-r[0][1]); if (d > far){ far = d; fi = i; } }
+  const a = rdp(r.slice(0, fi+1), 9), b = rdp(r.slice(fi).concat([r[0]]), 9);
+  return a.slice(0, -1).concat(b.slice(0, -1));
+}
+function inPoly(x, y, poly){
+  let inside = false;
+  for (let i=0, j=poly.length-1; i<poly.length; j=i++){
+    const xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1];
+    if (((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside = !inside;
+  }
+  return inside;
+}
+// ----- simple watch boxes: grouped places -> convex outline cut down to at most 6 sides, with a margin -----
+const BOX = { watch: { link: 68, pad: 22, minPts: 2 }, warning: { link: 50, pad: 13, minPts: 1 }, maxSides: 6, maxPerSeason: 3 };
+function convexHull(pts){
+  const p = [...new Map(pts.map(q=>[q[0]+','+q[1], q])).values()].sort((a,b)=>a[0]-b[0] || a[1]-b[1]);
+  if (p.length < 3) return p;
+  const cr = (o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo = [], up = [];
+  for (const q of p){ while (lo.length>=2 && cr(lo[lo.length-2], lo[lo.length-1], q) <= 0) lo.pop(); lo.push(q); }
+  for (let i=p.length-1;i>=0;i--){ const q=p[i]; while (up.length>=2 && cr(up[up.length-2], up[up.length-1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0,-1).concat(up.slice(0,-1));       // counter-clockwise in screen space? (y down -> clockwise visually)
+}
+function lineX(a1, a2, b1, b2){                        // intersection of line a1-a2 with line b1-b2
+  const d = (a2[0]-a1[0])*(b2[1]-b1[1]) - (a2[1]-a1[1])*(b2[0]-b1[0]);
+  if (Math.abs(d) < 1e-9) return null;
+  const t = ((b1[0]-a1[0])*(b2[1]-b1[1]) - (b1[1]-a1[1])*(b2[0]-b1[0])) / d;
+  return [a1[0] + t*(a2[0]-a1[0]), a1[1] + t*(a2[1]-a1[1])];
+}
+const triArea = (a,b,c)=>Math.abs((b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]))/2;
+function reduceSides(poly, maxN){
+  // drop one edge at a time by extending its two neighbours until they meet, always picking the edge that adds the
+  // least area; the shape still contains everything it did before
+  let p = poly.slice();
+  while (p.length > maxN){
+    let best = null;
+    for (let i=0;i<p.length;i++){
+      const a = p[(i-1+p.length)%p.length], b = p[i], c = p[(i+1)%p.length], d = p[(i+2)%p.length];
+      const X = lineX(a, b, d, c); if (!X) continue;
+      // X must lie beyond b (going a->b) and beyond c (going d->c)
+      if ((X[0]-b[0])*(b[0]-a[0]) + (X[1]-b[1])*(b[1]-a[1]) < 0) continue;
+      if ((X[0]-c[0])*(c[0]-d[0]) + (X[1]-c[1])*(c[1]-d[1]) < 0) continue;
+      const add = triArea(b, X, c);
+      if (!best || add < best.add) best = { i, X, add };
+    }
+    if (!best) break;
+    const j = (best.i+1)%p.length;
+    p[best.i] = best.X; p.splice(j, 1);
+  }
+  return p;
+}
+function offsetPoly(poly, pad){
+  // move every edge outward by pad and rebuild the corners
+  const n = poly.length; if (n < 3) return poly;
+  let area = 0; for (let i=0;i<n;i++){ const a=poly[i], b=poly[(i+1)%n]; area += a[0]*b[1]-b[0]*a[1]; }
+  const s = area > 0 ? 1 : -1;
+  const lines = [];
+  for (let i=0;i<n;i++){
+    const a = poly[i], b = poly[(i+1)%n]; let nx = b[1]-a[1], ny = -(b[0]-a[0]); const L = Math.hypot(nx,ny)||1;
+    nx = nx/L*pad*s; ny = ny/L*pad*s;
+    lines.push([[a[0]+nx, a[1]+ny], [b[0]+nx, b[1]+ny]]);
+  }
+  const out = [];
+  for (let i=0;i<n;i++){
+    const l1 = lines[(i-1+n)%n], l2 = lines[i];
+    const X = lineX(l1[0], l1[1], l2[0], l2[1]);
+    out.push(X && Math.hypot(X[0]-poly[i][0], X[1]-poly[i][1]) < pad*4 ? X : l2[0]);
+  }
+  return out;
+}
+function smallBox(pts, pad){
+  // one or two places: a tilted rectangle along the pair (or a slightly tilted square)
+  const [a, b] = [pts[0], pts[pts.length-1]];
+  let ang = pts.length > 1 ? Math.atan2(b[1]-a[1], b[0]-a[0]) : -0.26;
+  const ca = Math.cos(ang), sa = Math.sin(ang), mx = (a[0]+b[0])/2, my = (a[1]+b[1])/2;
+  const half = Math.hypot(b[0]-a[0], b[1]-a[1])/2 + pad + 6, hw = pad + 8;
+  return [[-half,-hw],[half,-hw],[half,hw],[-half,hw]].map(([u,v])=>[mx + u*ca - v*sa, my + u*sa + v*ca]);
+}
+function groupBy(pts, link){
+  const parent = pts.map((_, i)=>i), find = i=>{ while (parent[i]!==i){ parent[i]=parent[parent[i]]; i=parent[i]; } return i; };
+  for (let i=0;i<pts.length;i++) for (let j=i+1;j<pts.length;j++)
+    if ((pts[i].x-pts[j].x)**2 + (pts[i].y-pts[j].y)**2 <= link*link) parent[find(i)] = find(j);
+  const g = new Map(); pts.forEach((p, i)=>{ const r = find(i); if (!g.has(r)) g.set(r, []); g.get(r).push(p); });
+  return [...g.values()];
+}
+function boxFor(gp, pad){
+  const xy = gp.map(p=>[p.x, p.y]);
+  const hull = convexHull(xy);
+  let box = hull.length >= 3 ? offsetPoly(reduceSides(hull, BOX.maxSides), pad) : smallBox(xy, pad);
+  if (hull.length >= 3 && ringArea(box) < 1800) box = smallBox([xy.reduce((a,p)=>p[0]<a[0]?p:a), xy.reduce((a,p)=>p[0]>a[0]?p:a)], pad);
+  return box;
+}
+// Split a group (tighter grouping each time) until at least 60% of the checked places inside its box are changing.
+function splitGroup(gp, link, pad, eligiblePts){
+  const box = boxFor(gp, pad);
+  const inside = eligiblePts.filter(q=>inPoly(q[0], q[1], box)).length;
+  if (gp.length / Math.max(inside, 1) >= 0.6 || link < 28 || gp.length < 3) return [{ gp, box }];
+  return groupBy(gp, link*0.75).flatMap(sub=>splitGroup(sub, link*0.75, pad, eligiblePts));
+}
+function simpleBoxes(byPoint, P, eligiblePts){
+  const boxes = [];
+  for (const level of ['watch', 'warning']){
+    for (const season of ['winter', 'spring', 'summer', 'autumn']){
+      const pts = [];
+      for (const [i, e] of byPoint) if (e[2] === season && (level === 'watch' || e[1] === 'warning')) pts.push({ x: P[i][0], y: P[i][1], e });
+      if (!pts.length) continue;
+      const cfg = BOX[level];
+      const groups = groupBy(pts, cfg.link).flatMap(g=>splitGroup(g, cfg.link, cfg.pad, eligiblePts))
+        .filter(({ gp })=>gp.length >= cfg.minPts || gp.some(p=>isCapitalKey(p.e[0])));
+      groups.sort((a,b)=>b.gp.length - a.gp.length);
+      for (const { gp, box } of groups.slice(0, BOX.maxPerSeason)){
+        const m = gp.map(p=>[p.e[0], p.e[3], p.e[4]]);
+        m.sort((a,b)=> (isCapitalKey(b[0]) - isCapitalKey(a[0])) || a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+        boxes.push({ s: season, lv: level, box: box.map(q=>[Math.round(q[0]), Math.round(q[1])]), m });
+      }
+    }
+  }
+  return boxes;
+}
+
+// ----- county-based watches: each county joins if the blend of nearby forecast places says the change is coming -----
+const CTOPO = (()=>{ try { return JSON.parse(document.getElementById('counties').textContent); } catch(e){ return null; } })();
+const CYCLE_NEXT = { spring: 'summer', summer: 'autumn', autumn: 'winter', winter: 'spring' };
+let CO = null;
+function countyInit(){
+  if (CO || !CTOPO || !frw) return CO;
+  const geoms = CTOPO.objects.counties.geometries;
+  const feats = topojson.feature(CTOPO, CTOPO.objects.counties).features;
+  const nb = topojson.neighbors(geoms);
+  const cent = feats.map(f=>path.centroid(f));
+  const arcsOf = g => (g.type === 'Polygon' ? g.arcs : g.arcs.flat()).flat();
+  const use = new Map();
+  for (const gm of geoms) for (const a of arcsOf(gm)){ const k = a < 0 ? ~a : a; use.set(k, (use.get(k)||0) + 1); }
+  const edge = geoms.map(gm=>arcsOf(gm).some(a=>use.get(a < 0 ? ~a : a) === 1));   // touches the coast or border
+  const { P, n } = frw, C = feats.length, W = new Float32Array(C*n);
+  const creg = geoms.map(g=>regionOfFips(String(g.id)));
+  for (let c=0;c<C;c++){ const [x,y] = cent[c]; for (let p=0;p<n;p++){
+    if (frw.regPt[p] !== creg[c]) continue;
+    const dx=P[p][0]-x, dy=P[p][1]-y, d2 = dx*dx+dy*dy;
+    if (creg[c] === 1 && d2 > 50*50) continue;             // Alaska: a place only speaks for boroughs within ~400 miles
+    W[c*n+p] = Math.pow(d2+400, -1.25); } }
+  const ptCounty = P.map((p, i)=>{ let b=-1, bd=Infinity; for (let c=0;c<C;c++){ if (creg[c] !== frw.regPt[i]) continue; const d=(cent[c][0]-p[0])**2+(cent[c][1]-p[1])**2; if (d<bd){ bd=d; b=c; } } return b; });
+  CO = { geoms, feats, nb, cent, edge, W, C, ptCounty, creg };
+  return CO;
+}
+// size rules scale down for Alaska's and Hawaii's much bigger counties
+const minCounties = (comp, base) => Math.max(1, Math.round(base / REGION_SCALE[CO.creg[comp[0]]]));
+const topPerRegion = (comps, k) => { const cnt = [0, 0, 0]; return comps.filter(cp=>cnt[CO.creg[cp[0]]]++ < k); };
+function components(set, nb){
+  const seen = new Set(), comps = [];
+  for (const s of set){
+    if (seen.has(s)) continue;
+    const comp = [s], st = [s]; seen.add(s);
+    while (st.length){ const a = st.pop(); for (const b of nb[a]) if (set.has(b) && !seen.has(b)){ seen.add(b); comp.push(b); st.push(b); } }
+    comps.push(comp);
+  }
+  return comps;
+}
+function bfsDist(sources, passable, nb, cap){
+  const dist = new Map(); const q = [];
+  for (const s of sources){ dist.set(s, 0); q.push(s); }
+  for (let h=0; h<q.length; h++){
+    const a = q[h], da = dist.get(a); if (da >= cap) continue;
+    for (const b of nb[a]) if (!dist.has(b) && passable(b)){ dist.set(b, da+1); q.push(b); }
+  }
+  return dist;
+}
+function countyAreas(byPoint, eligible, shownAtCounty, shownAtPoint, exclude){
+  const co = countyInit(); if (!co) return [];
+  const { P, n } = frw, { C, W, nb, edge, geoms, ptCounty } = co;
+  const out = [], watchSet = {};
+  for (const level of ['watch', 'warning', 'exception']){
+    const passes = level === 'exception' ? [['winter','latefreeze'], ['summer','summerreturns'], ['winter','earlyfreeze'], ['summer','earlysummer']]
+                                         : ['winter', 'spring', 'summer', 'autumn'].map(s2=>[s2, null]);
+    for (const [season, exKind] of passes){
+      const ind = new Uint8Array(n), chg = new Uint8Array(n); let any = false;
+      for (const [i, e] of byPoint){
+        if (e[2] !== season || (e[5] || null) !== exKind) continue;
+        chg[i] = 1;
+        if (level !== 'warning' || e[1] === 'warning'){ ind[i] = 1; any = true; }
+      }
+      if (!any) continue;
+      // 1) county decision from the blend of nearby places. Watches: among all checked places.
+      //    Warnings: among the places forecast to change, and only inside that season's watch.
+      const ex = (exclude && exclude[season]) || null;
+      const inS = new Set();
+      const purge = ()=>{ if (ex) for (const c of ex) inS.delete(c); };
+      for (let c=0;c<C;c++){
+        if (shownAtCounty[c] === season || (ex && ex.has(c))) continue;
+        if (level === 'warning' && !(watchSet[season] && watchSet[season].has(c))) continue;
+        let num=0, den=0; const row=c*n;
+        for (let p=0;p<n;p++){
+          if (!eligible[p] || (level === 'warning' && !chg[p])) continue;
+          const w = W[row+p]; den += w; if (ind[p]) num += w;
+        }
+        if (den && num/den >= 0.4) inS.add(c);
+      }
+      if (!inS.size) continue;
+      const fillHoles = ()=>{
+        for (let pass=0; pass<2; pass++) for (let c=0;c<C;c++)
+          if (!inS.has(c) && nb[c].length && nb[c].every(b=>inS.has(b)) && shownAtCounty[c] !== season) inS.add(c);
+        const outside = new Set(); for (let c=0;c<C;c++) if (!inS.has(c)) outside.add(c);
+        for (const comp of components(outside, nb)) if (comp.length <= 60 && !comp.some(c=>edge[c])) for (const c of comp) if (shownAtCounty[c] !== season) inS.add(c);
+        purge();
+      };
+      fillHoles();
+      // bridge: areas within about 4 counties (~100 miles) of each other join, filling the counties between them
+      const passable = c=>shownAtCounty[c] !== season;
+      for (let round=0; round<3; round++){
+        const comps0 = components(inS, nb); if (comps0.length < 2) break;
+        let joined = false;
+        const dists = comps0.map(cp=>bfsDist(cp, passable, nb, 4));
+        for (let a=0; a<comps0.length; a++) for (let b=a+1; b<comps0.length; b++){
+          let dmin = Infinity; for (const c of comps0[b]) if (dists[a].has(c)) dmin = Math.min(dmin, dists[a].get(c));
+          if (!(dmin <= 4)) continue;
+          for (const [c, da] of dists[a]) if (dists[b].has(c) && da + dists[b].get(c) <= dmin + 1) inS.add(c);
+          joined = true;
+        }
+        if (!joined) break;
+        fillHoles();
+      }
+      // 2) extend each watch area to the front it comes from (the counties already showing that season)
+      if (level === 'watch'){   // (not for exceptions: those are setbacks, not a front arriving)
+        const srcs = []; for (let c=0;c<C;c++) if (shownAtCounty[c] === season) srcs.push(c);
+        if (srcs.length){
+          const distS = bfsDist(srcs, c=>shownAtCounty[c] !== season, nb, 12);
+          for (const comp of components(inS, nb)){
+            let dmin = Infinity; for (const c of comp) if (distS.has(c)) dmin = Math.min(dmin, distS.get(c));
+            if (!(dmin >= 1 && dmin <= 8)) continue;
+            const dA = bfsDist(comp, c=>shownAtCounty[c] !== season, nb, 12);
+            for (const [c, da] of dA) if (distS.has(c) && distS.get(c) + da <= dmin + 1) inS.add(c);
+          }
+          fillHoles();
+        }
+      }
+      purge();
+      if (level === 'watch') watchSet[season] = new Set(inS);
+      // 3) drop tiny areas, keep the 3 biggest
+      const comps = components(inS, nb).filter(cp=>cp.length >= minCounties(cp, level === 'watch' ? 5 : 3)).sort((a,b)=>b.length - a.length);
+      for (const comp of topPerRegion(comps, 3)){
+        const cs = new Set(comp);
+        const m = [];
+        for (const [i, e] of byPoint) if (ind[i] && cs.has(ptCounty[i])) m.push([e[0], e[3], e[4], shownAtPoint(i)]);
+        if (!m.length) continue;
+        m.sort((a,b)=> (isCapitalKey(b[0]) - isCapitalKey(a[0])) || a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+        const geom = topojson.merge(CTOPO, comp.map(c=>geoms[c]));
+        const coords = geom.coordinates.flatMap(poly=>poly[0]);
+        const top = coords.reduce((a,p)=>p[1]<a[1]?p:a, coords[0]);
+        const hullPts = reduceSides(convexHull(coords), 8);
+        const counties = comp.map(c=>[geoms[c].id, geoms[c].properties.n]);
+        out.push({ s: season, lv: level === 'exception' ? 'warning' : level, ex: exKind, d: path(geom), top, box: hullPts, m, counties, ci: comp });
+      }
+    }
+  }
+  return out;
+}
+
+function rareAreas(rare, eligible){
+  const co = countyInit(); if (!co || !rare || !rare.length) return [];
+  const { P, n } = frw, { C, W, nb, edge, geoms, ptCounty } = co;
+  const byType = {};
+  for (const r of rare){ const i = keyIdx.get(r[0]); if (i !== undefined && eligible[i]) (byType[r[1]] = byType[r[1]] || new Map()).set(i, r); }
+  const out = [];
+  for (const type of Object.keys(RARE)){
+    const pts = byType[type]; if (!pts) continue;
+    const inS = new Set();
+    for (let c=0;c<C;c++){
+      let num=0, den=0; const row=c*n;
+      for (let p=0;p<n;p++){ if (!eligible[p]) continue; const w = W[row+p]; den += w; if (pts.has(p)) num += w; }
+      if (den && num/den >= 0.4) inS.add(c);
+    }
+    const fill = ()=>{
+      for (let c=0;c<C;c++) if (!inS.has(c) && nb[c].length && nb[c].every(b=>inS.has(b))) inS.add(c);
+      const outside = new Set(); for (let c=0;c<C;c++) if (!inS.has(c)) outside.add(c);
+      for (const comp of components(outside, nb)) if (comp.length <= 60 && !comp.some(c=>edge[c])) for (const c of comp) inS.add(c);
+    };
+    fill();
+    for (let round=0; round<3; round++){
+      const cs = components(inS, nb); if (cs.length < 2) break;
+      const ds = cs.map(cp=>bfsDist(cp, ()=>true, nb, 4)); let joined = false;
+      for (let a=0;a<cs.length;a++) for (let b=a+1;b<cs.length;b++){
+        let dmin = Infinity; for (const c of cs[b]) if (ds[a].has(c)) dmin = Math.min(dmin, ds[a].get(c));
+        if (!(dmin <= 4)) continue;
+        for (const [c, da] of ds[a]) if (ds[b].has(c) && da + ds[b].get(c) <= dmin + 1) inS.add(c);
+        joined = true;
+      }
+      if (!joined) break; fill();
+    }
+    const comps = components(inS, nb).filter(cp=>cp.length >= minCounties(cp, 5)).sort((a,b)=>b.length - a.length);
+    for (const comp of topPerRegion(comps, 3)){
+      const cs = new Set(comp), m = [];
+      for (const [i, r] of pts) if (cs.has(ptCounty[i])) m.push([r[0], r[2], r[3], r[4]]);
+      if (!m.length) continue;
+      m.sort((a,b)=> (isCapitalKey(b[0]) - isCapitalKey(a[0])) || a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+      const geom = topojson.merge(CTOPO, comp.map(c=>geoms[c]));
+      const coords = geom.coordinates.flatMap(poly=>poly[0]);
+      out.push({ s: type, lv: 'advisory', d: path(geom), top: coords.reduce((a,p)=>p[1]<a[1]?p:a, coords[0]),
+                 box: reduceSides(convexHull(coords), 8), m });
+    }
+  }
+  return out;
+}
+// Rare cold / heat areas: counties join where the blend of nearby checked places says the forecast reaches that
+// place's own tier-1 line (advisory) or tier-2 line (warning, drawn inside the advisory).
+// Log entries: [key, type, first day, value, last day, tier, tier-1 line, tier-2 line]
+function rareTempAreas(rareList, eligible){
+  const co = countyInit(); if (!co) return [];
+  const { n } = frw, { C, W, nb, edge, geoms, ptCounty } = co;
+  const out = [];
+  for (const type of Object.keys(RARE_TEMP)){
+    const pts = new Map();
+    for (const r of rareList){ if (r[1] !== type) continue; const i = keyIdx.get(r[0]); if (i !== undefined && eligible[i]) pts.set(i, r); }
+    if (!pts.size) continue;
+    let inT1 = null;
+    for (const tier of [1, 2]){
+      const flagged = new Map([...pts].filter(([, r])=>(r[5] || 1) >= tier));
+      if (!flagged.size) continue;
+      const inS = new Set();
+      for (let c=0;c<C;c++){
+        if (tier === 2 && !inT1.has(c)) continue;
+        let num=0, den=0; const row=c*n;
+        for (let p=0;p<n;p++){ if (!eligible[p]) continue; const w = W[row+p]; den += w; if (flagged.has(p)) num += w; }
+        if (den && num/den >= 0.4) inS.add(c);
+      }
+      // every flagged place's own county counts, so a lone rare spot still shows
+      for (const i of flagged.keys()) if (ptCounty[i] >= 0 && (tier === 1 || inT1.has(ptCounty[i]))) inS.add(ptCounty[i]);
+      for (let c=0;c<C;c++) if (!inS.has(c) && nb[c].length && nb[c].every(b=>inS.has(b)) && (tier === 1 || inT1.has(c))) inS.add(c);
+      const outside = new Set(); for (let c=0;c<C;c++) if (!inS.has(c)) outside.add(c);
+      for (const comp of components(outside, nb)) if (comp.length <= 40 && !comp.some(c=>edge[c])) for (const c of comp) if (tier === 1 || inT1.has(c)) inS.add(c);
+      if (tier === 1) inT1 = inS;
+      const comps = components(inS, nb).sort((a,b)=>b.length - a.length);
+      for (const comp of topPerRegion(comps, 10)){
+        const cs = new Set(comp), m = [];
+        for (const [i, r] of flagged) if (cs.has(ptCounty[i])) m.push([r[0], r[2], r[3], r[4], r[5] || 1, r[6], r[7]]);
+        if (!m.length) continue;
+        const rank = mm => RARE_TEMP[type].cold ? (mm[5] - mm[2]) : (mm[2] - mm[5]);     // degrees past its own line
+        m.sort((a,b)=> (isCapitalKey(b[0]) - isCapitalKey(a[0])) || rank(b) - rank(a) || a[0].localeCompare(b[0]));
+        const geom = topojson.merge(CTOPO, comp.map(c=>geoms[c]));
+        const coords = geom.coordinates.flatMap(poly=>poly[0]);
+        out.push({ s: type, lv: 'rare', tier, d: path(geom), rings: geom.coordinates, top: coords.reduce((a,p)=>p[1]<a[1]?p:a, coords[0]),
+                   box: reduceSides(convexHull(coords), 8), m, ci: comp,
+                   counties: comp.map(c=>[geoms[c].id, geoms[c].properties.n]) });
+      }
+    }
+  }
+  return out;
+}
+const boxCache = new Map();
+// Boxes for one day: for each season, blend "this place is forecast to change to that season" across every point
+// that was checked that morning (places already in that season, or not changing, count as no), outline where most
+// nearby places agree, and straighten the outline. Warnings use only the confident places, so they sit inside watches.
+function watchesFor(d){
+  if (boxCache.has(d)) return boxCache.get(d);
+  const raw = WLOG[d]; if (!raw || !frw) return null;
+  const entries = Array.isArray(raw) ? raw : raw.e, all = Array.isArray(raw) ? false : !!raw.all;
+  const off = Math.round((Date.parse(d+'T00:00:00Z') - frw.d0)/864e5);
+  const { P, n, nx, ny, W, SK } = frw, cells = nx*ny;
+  const eligible = new Uint8Array(n);
+  for (let p=0;p<n;p++) eligible[p] = (P[p][2] <= off && off <= P[p][3] && (all || isCapitalKey(P[p][6] || ''))) ? 1 : 0;
+  // the season the map is showing at each place that day; a box never counts places already shown in its season
+  const F = frFields(off);
+  const negT = F.tier.map(v=>-v);
+  const R = { summer: ringPaths(frw.gen.contour(F.tier, 1.5)), winter: ringPaths(frw.gen.contour(negT, -0.5)),
+              spring: ringPaths(frw.gen.contour(F.mild, 0.0001)) };
+  const inRings = (rings, x, y)=>{ let c = 0; for (const r of rings) if (inPoly(x, y, r)) c++; return c % 2 === 1; };
+  const shown = (x, y)=> inRings(R.summer, x, y) ? 'summer' : inRings(R.winter, x, y) ? 'winter' : inRings(R.spring, x, y) ? 'spring' : 'autumn';
+  const byPoint = new Map();
+  for (const e of entries){
+    const i = keyIdx.get(e[0]);
+    // only forward moves in the season cycle get alerts (no 'summer back to spring' and the like)
+    const sh = i !== undefined ? shown(P[i][0], P[i][1]) : null;
+    const exOk = ((e[5] === 'latefreeze' || e[5] === 'earlyfreeze') && sh === 'spring' && e[2] === 'winter') || ((e[5] === 'summerreturns' || e[5] === 'earlysummer') && sh === 'autumn' && e[2] === 'summer');
+    if (i !== undefined && (CYCLE_NEXT[sh] === e[2] || exOk)) byPoint.set(i, e);
+  }
+  // ---- false seasons (a new season expected to flip back within a week) ----
+  const RET = { falsespring:'winter', falsesummer:'spring', falseautumn:'summer', falsewinter:'autumn' };
+  const PRETEND = { falsespring:'spring', falsesummer:'summer', falseautumn:'autumn', falsewinter:'winter' };
+  const rareList = (raw && !Array.isArray(raw) && raw.r) ? raw.r : [];
+  // a place expected to flip back never also counts toward the alert for flipping back
+  const flips = new Map();
+  for (const r of rareList){ if (!flips.has(r[0])) flips.set(r[0], []); flips.get(r[0]).push(r); }
+  for (const [i, e] of [...byPoint]){
+    const rs = flips.get(e[0]);
+    if (rs && rs.some(r=> e[2] === RET[r[1]] && e[3] >= r[2] && e[3] <= r[4])) byPoint.delete(i);
+  }
+  let boxes, hitByType = {}, underway = {}, exclude = {}, shownAtCounty = null;
+  if (countyInit()){
+    shownAtCounty = CO.cent.map(c=>shown(c[0], c[1]));
+    const { C, W, nb } = CO;
+    for (const type of Object.keys(RARE)){
+      const flagged = new Uint8Array(n); let any = false;
+      for (const r of rareList){ if (r[1] !== type) continue; const i = keyIdx.get(r[0]); if (i !== undefined && eligible[i]){ flagged[i] = 1; any = true; } }
+      if (!any) continue;
+      const hit = new Uint8Array(C);
+      for (let c=0;c<C;c++){
+        let num=0, den=0; const row=c*n;
+        for (let p=0;p<n;p++){ if (!eligible[p]) continue; const w = W[row+p]; den += w; if (flagged[p]) num += w; }
+        if (den && num/den >= 0.4) hit[c] = 1;
+      }
+      hitByType[type] = hit;
+      // already in the false season now: a stand-alone hatch, and kept out of the alert for flipping back
+      const now = new Set(); for (let c=0;c<C;c++) if (hit[c] && shownAtCounty[c] === PRETEND[type]) now.add(c);
+      const comps = components(now, nb).filter(cp=>cp.length >= minCounties(cp, 8));
+      if (comps.length){
+        underway[type] = comps;
+        const ex = exclude[RET[type]] = exclude[RET[type]] || new Set();
+        for (const cp of comps) for (const c of cp) ex.add(c);
+      }
+    }
+    boxes = countyAreas(byPoint, eligible, shownAtCounty, i=>shown(P[i][0], P[i][1]), exclude);
+  } else {
+    const eligiblePts = [];
+    for (let p=0;p<n;p++) if (eligible[p]) eligiblePts.push([P[p][0], P[p][1]]);
+    boxes = simpleBoxes(byPoint, P, eligiblePts);
+  }
+  if (CO && shownAtCounty){
+    const { nb, geoms, ptCounty } = CO;
+    for (const type of Object.keys(hitByType)){
+      const hit = hitByType[type];
+      // coming soon: hatch the part of that season's watch or warning that will not last
+      for (const bx of boxes){
+        if (!bx.ci || bx.s !== PRETEND[type]) continue;
+        const inside = new Set(bx.ci.filter(c=>hit[c]));
+        const comps = components(inside, nb).filter(cp=>cp.length >= minCounties(cp, 8));
+        if (!comps.length) continue;
+        const geom = topojson.merge(CTOPO, comps.flat().map(c=>geoms[c]));
+        (bx.hatches = bx.hatches || []).push({ type, d: path(geom), n: comps.reduce((s,cp)=>s+cp.length, 0) });
+      }
+      // already happening: a stand-alone hatch with its own bulletin
+      for (const comp of (underway[type] || [])){
+        const cs = new Set(comp), m = [];
+        for (const r of rareList){ if (r[1] !== type) continue; const i = keyIdx.get(r[0]); if (i !== undefined && cs.has(ptCounty[i])) m.push([r[0], r[2], r[3], r[4]]); }
+        if (!m.length) continue;
+        m.sort((a,b)=> (isCapitalKey(b[0]) - isCapitalKey(a[0])) || a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+        const geom = topojson.merge(CTOPO, comp.map(c=>geoms[c]));
+        const coords = geom.coordinates.flatMap(poly=>poly[0]), dd = path(geom);
+        boxes.push({ s: type, lv: 'advisory', d: dd, rings: geom.coordinates, top: coords.reduce((a,p)=>p[1]<a[1]?p:a, coords[0]),
+                     box: reduceSides(convexHull(coords), 8), m, ci: comp, hatches: [{ type, d: dd, n: comp.length }], falseType: type });
+      }
+    }
+    for (const bx of boxes) if (bx.hatches && bx.lv !== 'advisory'){ bx.hatches.sort((a,b)=>b.n - a.n); bx.falseType = bx.hatches[0].type; }
+    boxes.push(...rareTempAreas(rareList, eligible).map(x=>({ ...x, rebuilt: !!raw.rb })));
+    // ---- outlook areas: season changes the CFS outlook shows in weeks 2-4 (faint, never over a watch or warning) ----
+    const olist = (raw && !Array.isArray(raw) && raw.o) ? raw.o : [];
+    if (olist.length){
+      const eligO = new Uint8Array(n);
+      for (let p=0;p<n;p++) eligO[p] = (P[p][2] <= off && off <= P[p][3]) ? 1 : 0;
+      const byO = new Map();
+      for (const o of olist){
+        const i = keyIdx.get(o[0]); if (i === undefined) continue;
+        const sh = shown(P[i][0], P[i][1]);
+        // the next season, or the one after when a watch is about to move the place along first
+        if (CYCLE_NEXT[sh] === o[1] || CYCLE_NEXT[CYCLE_NEXT[sh]] === o[1]) byO.set(i, [o[0], 'watch', o[1], o[2], o[3]]);
+      }
+      const exO = {};
+      for (const bx of boxes) if (bx.ci && (bx.lv === 'watch' || bx.lv === 'warning')){ const ex = exO[bx.s] = exO[bx.s] || new Set(); for (const c of bx.ci) ex.add(c); }
+      const ob = countyAreas(byO, eligO, shownAtCounty, i=>shown(P[i][0], P[i][1]), exO)
+        .filter(x=>x.lv === 'watch').map((x, k)=>({ ...x, lv: 'outlook', i: k }));
+      boxes.unshift(...ob);
+    }
+  }
+  boxCache.set(d, boxes);
+  if (boxCache.size > 16) boxCache.delete(boxCache.keys().next().value);
+  return boxes;
+}
+
+// ----- smooth alert transitions between day d and the next day -----
+// An alert that continues sheds and gains counties one by one: a county the front passes drops the moment the
+// front reaches it; other leaving counties peel off from the outside in, and new ones grow outward from the edge.
+// An alert that does not continue fades out as a whole; a brand-new one fades in.
+const trCache = new Map();
+const FIRST_LOG = Object.keys(WLOG).sort()[0] || '9999';
+function seasonAtFrac(FA, FB, x, y, e){
+  const tv = sample(FA.tier, x, y)*(1-e) + sample(FB.tier, x, y)*e;
+  if (tv <= 0.5) return 'winter';
+  if (tv >= 1.5) return 'summer';
+  return (sample(FA.mild, x, y)*(1-e) + sample(FB.mild, x, y)*e) > 0 ? 'spring' : 'autumn';
+}
+function pairPlan(a, b, d, FA, FB){
+  const key = d + '|' + a.s + a.lv + (a.ex || '') + (a.tier || '') + '|' + a.ci.length + '|' + b.ci.length + '|' + a.ci[0] + '|' + b.ci[0];
+  if (trCache.has(key)) return trCache.get(key);
+  const { nb, cent } = CO;
+  const A = new Set(a.ci), B = new Set(b.ci), core = a.ci.filter(c=>B.has(c));
+  const drops = a.ci.filter(c=>!B.has(c)), adds = b.ci.filter(c=>!A.has(c));
+  const dist = (sources, within)=>{ const m = new Map(), q = []; for (const s of sources){ m.set(s, 0); q.push(s); }
+    for (let h=0; h<q.length; h++){ const c = q[h]; for (const n2 of nb[c]) if (within.has(n2) && !m.has(n2)){ m.set(n2, m.get(c)+1); q.push(n2); } } return m; };
+  const dD = dist(core, A), dA = dist(core.length ? core : [b.ci[0]], B);
+  const maxD = Math.max(1, ...drops.map(c=>dD.get(c) || 0)), maxA = Math.max(1, ...adds.map(c=>dA.get(c) || 0));
+  const season = (a.lv === 'advisory' || a.lv === 'rare') ? null : a.s;
+  const dropT = drops.map(c=>{
+    let t = null;
+    if (season) for (let k=1; k<=20; k++){ const e = k/20; if (seasonAtFrac(FA, FB, cent[c][0], cent[c][1], e) === season){ t = e; break; } }
+    if (t === null) t = 0.85 - 0.7 * ((dD.get(c) ?? maxD) / maxD) * 0.999;   // outside first
+    return [c, t];
+  }).sort((p,q)=>p[1]-q[1]);
+  const addT = adds.map(c=>[c, 0.15 + 0.7 * ((dA.get(c) ?? maxA) / maxA)]).sort((p,q)=>p[1]-q[1]);
+  const plan = { core, dropT, addT, geo: new Map() };
+  trCache.set(key, plan); if (trCache.size > 60) trCache.delete(trCache.keys().next().value);
+  return plan;
+}
+function planGeometry(plan, e){
+  let nd = 0; while (nd < plan.dropT.length && plan.dropT[nd][1] <= e) nd++;
+  let na = 0; while (na < plan.addT.length && plan.addT[na][1] <= e) na++;
+  const sig = nd + ':' + na;
+  if (plan.geo.has(sig)) return plan.geo.get(sig);
+  const cs = plan.core.concat(plan.dropT.slice(nd).map(p=>p[0]), plan.addT.slice(0, na).map(p=>p[0]));
+  let out = null;
+  if (cs.length){
+    const geom = topojson.merge(CTOPO, cs.map(c=>CO.geoms[c]));
+    const coords = geom.coordinates.flatMap(poly=>poly[0]);
+    out = { d: path(geom), rings: geom.coordinates, top: coords.reduce((a2,p)=>p[1]<a2[1]?p:a2, coords[0]) };
+  }
+  plan.geo.set(sig, out);
+  return out;
+}
+function transitionGroups(d){
+  const A = watchesFor(d) || [];
+  const base = A.map((x, i)=>({ ...x, i, key: d+'|'+i, op: 1 }));
+  if (!(frac > 0) || !frw || !CO) return base;
+  const nd = nextDay(d);
+  if (nd > DATA.obsEnd || nd < FIRST_LOG) return base;
+  const B = WLOG[nd] ? (watchesFor(nd) || []) : [];      // no log that day = no alerts: today's fade out
+  const e = frac*frac*(3-2*frac);
+  const off = Math.round((Date.parse(d+'T00:00:00Z') - frw.d0)/864e5);
+  const FA = frFields(off), FB = frFields(Math.min(off+1, frw.maxOff));
+  // match each of today's alerts to the same kind of alert tomorrow with the most shared counties
+  const usedB = new Set(), out = [];
+  A.forEach((a, i)=>{
+    let best = -1, bestN = 0;
+    if (a.ci) B.forEach((b, j)=>{
+      if (usedB.has(j) || !b.ci || b.s !== a.s || b.lv !== a.lv || (b.ex || null) !== (a.ex || null) || (b.tier || 0) !== (a.tier || 0)) return;
+      const S = new Set(a.ci); let n2 = 0; for (const c of b.ci) if (S.has(c)) n2++;
+      if (n2 > bestN){ bestN = n2; best = j; }
+    });
+    if (best < 0){ out.push({ ...a, i, key: d+'|out|'+i, op: 1 - e }); return; }
+    usedB.add(best);
+    const b = B[best], plan = pairPlan(a, b, d, FA, FB), g = planGeometry(plan, e);
+    if (!g) return;
+    const src = e < 0.5 ? a : b;
+    out.push({ ...src, i, key: d+'|pair|'+i, op: 1, d: g.d, rings: g.rings, top: g.top,
+               hatches: src.hatches, falseType: src.falseType });
+  });
+  B.forEach((b, j)=>{ if (!usedB.has(j)) out.push({ ...b, i: A.length + j, key: d+'|in|'+j, op: e }); });
+  // keep the drawing order: watches, then warnings, then hatches on top
+  const pri = x => x.lv === 'outlook' ? -1 : x.lv === 'advisory' ? 3 : x.lv === 'rare' ? 1.5 + (x.tier || 1)/10 : x.lv === 'warning' ? 1 : 0;
+  return out.sort((p,q)=>pri(p) - pri(q));
+}
+
+function paintWatches(d){
+  const groups = (view==='fronts' && showWatches) ? transitionGroups(d) : [];
+  watchLayer.attr('display', groups.length ? null : 'none');
+  const items = groups;
+  const sel = watchLayer.selectAll('g.wbox').data(items, x=>x.key).join(enter=>{
+    const gg = enter.append('g').attr('class','wbox').attr('tabindex',0).attr('role','button');
+    gg.append('path').attr('class','wpoly').attr('fill-rule','evenodd');
+    gg.append('path').attr('class','whatchedge');
+    gg.append('path').attr('class','whatch').attr('fill-rule','evenodd');
+    gg.append('rect').attr('class','wtagbg').attr('rx',3);
+    gg.append('text').attr('class','wtag');
+    return gg;
+  }).order();
+  sel.attr('aria-label', x=> x.lv === 'rare'
+       ? `${alertName(x)} ${levelWord(x)}: ${x.m.length} place${x.m.length===1?'':'s'} forecast to be ${RARE_TEMP[x.s].cold ? 'colder' : 'hotter'} than ${x.tier === 2 ? 'nearly' : 'almost'} any day there. Open bulletin.`
+       : x.lv === 'advisory'
+       ? `${RARE[x.s].name}, expected to flip back within a week: ${x.m.length} place${x.m.length===1?'':'s'}. Open bulletin.`
+       : `${alertName(x)} ${x.lv}${x.falseType ? ', partly hatched for ' + RARE[x.falseType].name.toLowerCase() : ''}: ${x.m.length} place${x.m.length===1?'':'s'}. Open bulletin.`)
+     .classed('warning', x=>x.lv==='warning').classed('outlook', x=>x.lv==='outlook').classed('advisory', x=>x.lv==='advisory').classed('rare', x=>x.lv==='rare').classed('t2', x=>x.lv==='rare' && x.tier===2)
+     .attr('opacity', x=>x.op)
+     .on('click', (e,x)=>openBulletin(x, d))
+     .on('keydown', (e,x)=>{ if (e.key==='Enter'||e.key===' '){ e.preventDefault(); openBulletin(x, d); } });
+  sel.select('path.wpoly').attr('d', x=>x.d || ('M' + x.box.map(p=>p.join(',')).join('L') + 'Z'))
+     .attr('stroke', x=>alertCol(x)).attr('fill', x=>alertCol(x));
+  sel.select('path.whatch').attr('d', x=>x.hatches ? x.hatches.map(h=>h.d).join('') : null)
+     .attr('display', x=>x.hatches ? null : 'none').attr('fill', x=>x.falseType ? `url(#hatch-${x.falseType})` : 'none')
+     .attr('stroke', x=>x.falseType ? RARE[x.falseType].col : 'none');
+  sel.select('path.whatchedge').attr('d', x=>x.hatches ? x.hatches.map(h=>h.d).join('') : null).attr('display', x=>x.hatches ? null : 'none');
+  // tags: warnings first, then watches; keep inside the map and skip a tag that would overlap one already placed
+  const placed = [];
+  const nodes = sel.nodes().map((node, k)=>({ node, x: sel.data()[k] }));
+  // keep tags off stand-alone hatches so the hatch stays readable
+  const hatchRings = nodes.filter(o=>o.x.lv === 'advisory' && o.x.rings).flatMap(o=>o.x.rings.flat());
+  const onHatch = (px, py)=>{ let c = 0; for (const r of hatchRings) if (inPoly(px, py, r)) c++; return c % 2 === 1; };
+  const pri = x => x.lv === 'advisory' ? 0 : x.lv === 'rare' ? 0.5 : x.lv === 'warning' ? 1 : x.lv === 'outlook' ? 3 : 2;
+  nodes.sort((a,b)=> pri(a.x) - pri(b.x));
+  for (const { node, x } of nodes){
+    if (x.lv === 'advisory' || (x.lv === 'rare' && x.tier === 2)){ d3.select(node).selectAll('text,rect').attr('display','none'); continue; }
+    const top = x.top || x.box.reduce((a,p)=>p[1]<a[1]?p:a, x.box[0]);
+    const label = `${alertName(x).toUpperCase()} ${(x.lv === 'rare' && x.m.some(m=>m[4] === 2) ? 'warning' : levelWord(x)).toUpperCase()}`;
+    const w = label.length*6.9 + 12, h = 17;
+    const cx = Math.max(w/2 + 4, Math.min(996 - w/2, top[0])), ty = Math.max(h + 2, top[1] - 4);
+    const r = { x0: cx - w/2, x1: cx + w/2, y0: ty - h, y1: ty };
+    const clash = placed.some(q => !(r.x1 < q.x0 || r.x0 > q.x1 || r.y1 < q.y0 || r.y0 > q.y1)) || onHatch(cx, ty - h/2);
+    const gsel = d3.select(node);
+    gsel.select('text').attr('x', cx).attr('y', ty - 4).attr('text-anchor','middle').text(label).attr('display', clash ? 'none' : null);
+    gsel.select('rect').attr('x', r.x0).attr('y', r.y0).attr('width', w).attr('height', h).attr('fill', alertCol(x)).attr('display', clash ? 'none' : null);
+    if (!clash) placed.push(r);
+  }
+}
+const pad2 = n => String(n).padStart(2,'0');
+function bulletinTime(d, region){
+  // issued the morning after the map date (the page's own run time for the latest day), in the area's own time zone
+  let date, h, m;
+  if (d === DATA.obsEnd){ const [dd, tt] = DATA.updated.split('T'); date = dd; [h, m] = tt.split(':').map(Number); }
+  else { date = nextDay(d); h = 5; m = 56; }
+  const y = +date.slice(0,4), sunday = (mo, nth)=>{ const f = new Date(Date.UTC(y, mo, 1)).getUTCDay(); return 1 + (7 - f) % 7 + 7*(nth-1); };
+  const md = +date.slice(5,7)*100 + +date.slice(8,10);
+  const dst = md >= 300 + sunday(2, 2) && md < 1100 + sunday(10, 1);       // 2nd Sunday of March to 1st Sunday of November
+  let back = 0, zone = dst ? 'EDT' : 'EST';
+  if (region === 1){ back = 4; zone = dst ? 'AKDT' : 'AKST'; }
+  else if (region === 2){ back = dst ? 6 : 5; zone = 'HST'; }
+  h -= back; if (h < 0){ h += 24; date = prevDay(date); }
+  return { date, text: `${(h%12)||12}${pad2(m)} ${h>=12?'PM':'AM'} ${zone}` };
+}
+const prevDay = iso => { const x = new Date(iso+'T00:00:00Z'); x.setUTCDate(x.getUTCDate()-1); return x.toISOString().slice(0,10); };
+const alertRegion = x => (x.ci && CO) ? CO.creg[x.ci[0]] : (x.m && x.m.length ? regionOfKey(x.m[0][0]) : 0);
+const longDay = iso => { const x = new Date(iso+'T00:00:00Z'); return x.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric', timeZone:'UTC'}).toUpperCase().replace(',', ''); };
+function wrap(text, width=66){
+  const out = []; let line = '';
+  for (const word of text.split(' ')){
+    if ((line + ' ' + word).trim().length > width){ out.push(line.trim()); line = word; } else line += ' ' + word;
+  }
+  if (line.trim()) out.push(line.trim());
+  return out.join('\n');
+}
+function rareBulletin(x, d){
+  const R = RARE[x.s], S = R.name.toUpperCase();
+  const it = bulletinTime(d, alertRegion(x)), issued = new Date(it.date+'T00:00:00Z');
+  const stOf = k => isCapitalKey(k) ? k : k.split(', ').pop();
+  const states = [...new Set(x.m.map(m=>stOf(m[0])))].sort().map(a=>(STATE_NAME[a]||a).toUpperCase());
+  const nameOf = k => isCapitalKey(k) ? `${(DATA.states[k]?.city||k).toUpperCase()} ${k}` : k.toUpperCase().replace(', ', ' ');
+  const listed = x.m.slice(0, 10).map(m=>nameOf(m[0]));
+  const where = x.m.length > 10 ? listed.concat([`AND ${x.m.length - 10} OTHER LOCATIONS`]) : listed;
+  const first = x.m.reduce((a,m)=>m[1]<a?m[1]:a, x.m[0][1]), last = x.m.reduce((a,m)=>m[3]>a?m[3]:a, x.m[0][3]);
+  const vals = x.m.map(m=>m[2]);
+  const headline = {
+    falsespring: '...SPRING HAS ARRIVED, BUT WINTER RETURNS WITHIN A WEEK...',
+    falsesummer: '...SUMMER HAS ARRIVED, BUT THE HEAT BREAKS WITHIN A WEEK...',
+    falseautumn: '...AUTUMN HAS ARRIVED, BUT SUMMER RETURNS WITHIN A WEEK...',
+    falsewinter: '...WINTER HAS ARRIVED, BUT A THAW BRINGS AUTUMN BACK WITHIN A WEEK...'
+  }[x.s];
+  const what = {
+    falsespring: `A HARD FREEZE WITH LOWS NEAR ${Math.min(...vals)} DEGREES IS FORECAST TO END THIS SPRING. THE AREA RETURNS TO WINTER BY THIS MAP'S RULES.`,
+    falsesummer: `LOWS NEAR ${Math.min(...vals)} DEGREES ARE FORECAST TO END THIS SUMMER. THE AREA RETURNS TO SPRING BY THIS MAP'S RULES.`,
+    falseautumn: `HIGHS OF ${Math.min(...vals)} DEGREES OR WARMER ARE FORECAST FOR FIVE STRAIGHT DAYS. THE AREA RETURNS TO SUMMER BY THIS MAP'S RULES.`,
+    falsewinter: `HIGHS OF ${Math.min(...vals)} DEGREES OR WARMER ARE FORECAST WITHOUT A HARD FREEZE. THE AREA RETURNS TO AUTUMN BY THIS MAP'S RULES.`
+  }[x.s];
+  const act = {
+    falsespring: 'HOLD OFF ON PLANTING TENDER GARDENS AND KEEP THE WINTER COAT HANDY.',
+    falsesummer: 'ENJOY THE WARMTH WHILE IT LASTS, BUT DO NOT PUT AWAY THE JACKETS YET.',
+    falseautumn: 'KEEP THE FANS OUT AND THE SWEATERS IN THE CLOSET A LITTLE LONGER.',
+    falsewinter: 'THE ICE SCRAPER CAN GO BACK IN THE TRUNK FOR NOW. WINTER IS KNOCKING BUT NOT STAYING.'
+  }[x.s];
+  const latlon = x.box.map(p=>{ const ll = projUS.invert([p[0], p[1]]); return ll ? `${Math.round(ll[1]*100)} ${Math.round(-ll[0]*100)}` : null; }).filter(Boolean);
+  return [
+    'UNOFFICIAL - FOR FUN ONLY - NOT A NATIONAL WEATHER SERVICE PRODUCT', '',
+    `CAPITAL SEASONS MAP ${S} STATEMENT`,
+    `${it.text} ${issued.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}).toUpperCase().replace(/,/g,'')}`, '',
+    headline, '',
+    wrap(`THE CAPITAL SEASONS MAP HAS ISSUED A ${S} STATEMENT FOR PORTIONS OF ${states.length > 1 ? states.slice(0,-1).join(', ') + ' AND ' + states[states.length-1] : states[0]}.`), '',
+    wrap(`* WHAT...${what}`), '',
+    wrap(`* WHERE...${where.join(', ')}.`), '',
+    wrap(`* WHEN...${NAME[{falsespring:'spring',falsesummer:'summer',falseautumn:'autumn',falsewinter:'winter'}[x.s]].toUpperCase()} BEGAN ${longDay(first)}. EXPECTED TO END BY ${longDay(last)}.`), '',
+    'PRECAUTIONARY/PREPAREDNESS ACTIONS...', '', wrap(act), '', '&&', '',
+    wrap('LAT...LON ' + latlon.join(' ')), '', '$$'
+  ].join('\n');
+}
+// m: [key, first day, value, last day, tier, tier-1 line, tier-2 line]
+function rareTempBulletin(x, d){
+  const R = RARE_TEMP[x.s], cold = R.cold, L = levelWord(x).toUpperCase(), S = R.name.toUpperCase();
+  const it = bulletinTime(d, alertRegion(x)), issued = new Date(it.date+'T00:00:00Z');
+  const stCodes = x.counties && x.counties.length ? x.counties.map(c=>byFips[String(c[0]).slice(0,2)]).filter(Boolean) : x.m.map(m=>isCapitalKey(m[0]) ? m[0] : m[0].split(', ').pop());
+  const states = [...new Set(stCodes)].sort().map(a=>(STATE_NAME[a]||a).toUpperCase());
+  const nameOf = k => isCapitalKey(k) ? `${(DATA.states[k]?.city||k).toUpperCase()} ${k}` : k.toUpperCase().replace(', ', ' ');
+  const cityOf = k => isCapitalKey(k) ? (DATA.states[k]?.city||k).toUpperCase() : k.split(', ')[0].toUpperCase();
+  const past = m => cold ? m[5] - m[2] : m[2] - m[5];                 // degrees past that place's own 1% line
+  const lead = x.m.reduce((a, m)=> past(m) > past(a) ? m : a, x.m[0]);
+  const ext = cold ? Math.min(...x.m.map(m=>m[2])) : Math.max(...x.m.map(m=>m[2]));
+  const first = x.m.reduce((a,m)=>m[1]<a?m[1]:a, x.m[0][1]), last = x.m.reduce((a,m)=>m[3]>a?m[3]:a, x.m[0][3]);
+  const word = cold ? 'LOWS' : 'HIGHS', comp = cold ? 'COLDER' : 'HOTTER';
+  const often = (lead[4] === 2) ? 'ABOUT 1 DAY A YEAR' : 'ABOUT 3 OR 4 DAYS A YEAR';
+  const headline = `...${word} NEAR ${lead[2]}, ${comp} THAN ALL BUT ${often} IN ${cityOf(lead[0])}...`;
+  const official = x.m.filter(m=> cold ? m[2] < R.line : m[2] > R.line);
+  const where = x.m.slice(0, 12).map(m=>`${nameOf(m[0])} ${m[2]} (RARE ${cold ? 'BELOW' : 'ABOVE'} ${m[5]})`);
+  if (x.m.length > 12) where.push(`AND ${x.m.length - 12} OTHER LOCATIONS`);
+  const verb = x.rebuilt ? 'FOLLOWED' : 'ARE FORECAST';
+  const what = cold
+    ? `OVERNIGHT LOWS AS COLD AS ${ext} DEGREES ${verb}. FOR EACH PLACE LISTED, THAT IS AMONG THE COLDEST ${x.tier === 2 ? 'QUARTER OF ONE PERCENT' : 'ONE PERCENT'} OF NIGHTS IN ITS OWN RECORD ON THIS MAP.`
+    : `HIGHS AS HOT AS ${ext} DEGREES ${verb}. FOR EACH PLACE LISTED, THAT IS AMONG THE HOTTEST ${x.tier === 2 ? 'QUARTER OF ONE PERCENT' : 'ONE PERCENT'} OF DAYS IN ITS OWN RECORD ON THIS MAP.`;
+  const frontNote = !cold
+    ? `${official.length ? 'SOME OF THESE PLACES ALSO TOP 100 DEGREES. ' : ''}HEAT IS JUDGED HERE AGAINST EACH PLACE'S OWN HISTORY, SO EVEN A DAY BELOW 100 CAN BE RARE WHERE SUMMERS ARE MILD.`
+    : official.length === x.m.length
+    ? `THESE PLACES ALSO FALL ${cold ? 'BELOW 0' : 'ABOVE 100'} DEGREES, SO THE MAP'S ${R.front.toUpperCase()} FRONT REACHES THEM, AND ITS EDGE IS DRAWN BRIGHTER HERE.`
+    : official.length
+    ? `SOME OF THESE PLACES ALSO FALL ${cold ? 'BELOW 0' : 'ABOVE 100'} DEGREES, INSIDE THE MAP'S ${R.front.toUpperCase()} FRONT. THE REST STAY ${cold ? 'ABOVE 0' : 'BELOW 100'}, SO THEY GET A LOCAL ${R.front.toUpperCase()} FRONT INSTEAD.`
+    : `TEMPERATURES STAY ${cold ? 'ABOVE 0' : 'BELOW 100'} DEGREES, SO THIS IS A LOCAL ${R.front.toUpperCase()} FRONT: ${R.front.toUpperCase()} ${cold ? 'COLD' : 'HEAT'} FOR THESE PLACES, EVEN IF NOT BY THE NATIONAL LINE.`;
+  const meaning = x.tier === 2
+    ? `A ${S} WARNING MEANS THE FORECAST REACHES THE ${cold ? 'COLDEST' : 'HOTTEST'} QUARTER PERCENT OF A PLACE'S OWN DAYS, ROUGHLY ONCE A YEAR, WITHIN ${DATA.watchDays} DAYS.`
+    : `A ${S} ADVISORY MEANS THE FORECAST REACHES THE ${cold ? 'COLDEST' : 'HOTTEST'} ONE PERCENT OF A PLACE'S OWN DAYS, ROUGHLY 3 OR 4 DAYS A YEAR, WITHIN ${DATA.watchDays} DAYS.`;
+  const act = cold
+    ? 'COLD LIKE THIS IS UNUSUAL HERE, SO HOMES AND GARDENS MAY NOT BE READY FOR IT. PROTECT PIPES, BRING PETS AND TENDER PLANTS INDOORS, AND CHECK ON NEIGHBORS.'
+    : 'HEAT LIKE THIS IS UNUSUAL HERE, SO MANY HOMES MAY NOT BE BUILT FOR IT. DRINK WATER, LIMIT TIME OUTDOORS IN THE AFTERNOON, AND CHECK ON NEIGHBORS.';
+  const latlon = x.box.map(p=>{ const ll = projUS.invert([p[0], p[1]]); return ll ? `${Math.round(ll[1]*100)} ${Math.round(-ll[0]*100)}` : null; }).filter(Boolean);
+  return [
+    'UNOFFICIAL - FOR FUN ONLY - NOT A NATIONAL WEATHER SERVICE PRODUCT', '',
+    `CAPITAL SEASONS MAP ${S} ${L}${x.rebuilt ? ' (REBUILT)' : ''}`,
+    `${it.text} ${issued.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}).toUpperCase().replace(/,/g,'')}`, '',
+    headline, '',
+    wrap(`THE CAPITAL SEASONS MAP HAS ISSUED A ${S} ${L} FOR PORTIONS OF ${states.length > 1 ? states.slice(0,-1).join(', ') + ' AND ' + states[states.length-1] : states[0]}.`), '',
+    wrap(`* WHAT...${what}`), '',
+    wrap(`* WHERE...${where.join(', ')}.`), '',
+    wrap(`* WHEN...${first === last ? longDay(first) : 'FROM ' + longDay(first) + ' THROUGH ' + longDay(last)}.`), '',
+    wrap(`* ADDITIONAL DETAILS...${x.rebuilt ? 'REBUILT FROM THE WEATHER THAT ACTUALLY HAPPENED: NO FORECAST WAS SAVED FOR THIS ALERT, SO IT SHOWS WHAT A PERFECT FORECAST WOULD HAVE ISSUED. ' : ''}${frontNote} ${meaning}`), '',
+    'PRECAUTIONARY/PREPAREDNESS ACTIONS...', '', wrap(act), '', '&&', '',
+    wrap('LAT...LON ' + latlon.join(' ')), '', '$$'
+  ].join('\n');
+}
+function outlookBulletin(x, d){
+  const S = NAME[x.s].toUpperCase();
+  const it = bulletinTime(d, alertRegion(x)), issued = new Date(it.date+'T00:00:00Z');
+  const stOf = k => isCapitalKey(k) ? k : k.split(', ').pop();
+  const stCodes = x.counties && x.counties.length ? x.counties.map(c=>byFips[String(c[0]).slice(0,2)]).filter(Boolean) : x.m.map(m=>stOf(m[0]));
+  const states = [...new Set(stCodes)].sort().map(a=>(STATE_NAME[a]||a).toUpperCase());
+  const first = x.m.reduce((a,m)=>m[1]<a?m[1]:a, x.m[0][1]), last = x.m.reduce((a,m)=>m[1]>a?m[1]:a, x.m[0][1]);
+  const vals = x.m.map(m=>m[2]);
+  const what = {
+    winter: `THE OUTLOOK BRINGS LOWS NEAR ${Math.min(...vals)} DEGREES. ONE NIGHT BELOW 28 DEGREES BRINGS WINTER BY THIS MAP'S RULES.`,
+    summer: `THE OUTLOOK BRINGS A RUN OF HIGHS NEAR ${Math.min(...vals)} DEGREES. FIVE STRAIGHT DAYS AT 75 DEGREES OR WARMER BRINGS SUMMER BY THIS MAP'S RULES.`,
+    spring: `THE OUTLOOK BRINGS HIGHS NEAR ${Math.min(...vals)} DEGREES. THREE STRAIGHT DAYS AT 55 DEGREES OR WARMER BRINGS SPRING BY THIS MAP'S RULES.`,
+    autumn: `THE OUTLOOK BRINGS LOWS NEAR ${Math.min(...vals)} DEGREES. A NIGHT BELOW 50 DEGREES AFTER THE HEAT BRINGS AUTUMN BY THIS MAP'S RULES.`
+  }[x.s];
+  const nameOf = k => isCapitalKey(k) ? `${(DATA.states[k]?.city||k).toUpperCase()} ${k}` : k.toUpperCase().replace(', ', ' ');
+  const listed = x.m.slice(0, 10).map(m=>nameOf(m[0]));
+  const where = x.m.length > 10 ? listed.concat([`AND ${x.m.length - 10} OTHER LOCATIONS`]) : listed;
+  const runs = (DATA.cfsRuns || []).length || 4;
+  const lines = [
+    'UNOFFICIAL - FOR FUN ONLY - NOT A NATIONAL WEATHER SERVICE PRODUCT',
+    '',
+    'CAPITAL SEASONS MAP EXTENDED SEASON OUTLOOK',
+    `${it.text} ${issued.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}).toUpperCase().replace(/,/g,'')}`,
+    '',
+    `...${S} MAY ARRIVE IN THE NEXT FEW WEEKS...`,
+    '',
+    wrap(`THE LONG-RANGE OUTLOOK SHOWS ${S} REACHING PORTIONS OF ${states.length > 1 ? states.slice(0,-1).join(', ') + ' AND ' + states[states.length-1] : states[0]} ${DATA.outlookFrom || 6} TO ${DATA.outlookTo || 30} DAYS OUT. THIS IS NOT A WATCH OR WARNING.`),
+    '',
+    wrap(`* WHAT...${what}`),
+    '',
+    wrap(`* WHERE...${where.join(', ')}.`),
+    '',
+    wrap(`* WHEN...${first === last ? 'AROUND ' + longDay(first) : 'SOMETIME BETWEEN ' + longDay(first) + ' AND ' + longDay(last)}.`),
+    '',
+    wrap(`* CONFIDENCE...LOW. THIS COMES FROM THE AVERAGE OF THE LATEST ${runs} RUNS OF NOAA'S CLIMATE FORECAST SYSTEM, ADJUSTED TO EACH PLACE'S OWN CLIMATE. OUTLOOKS THIS FAR AHEAD OFTEN SHIFT BY A WEEK OR MORE AND CAN DISAPPEAR ENTIRELY. A WATCH FOLLOWS IF THE CHANGE MOVES INTO THE ${DATA.watchDays}-DAY FORECAST.`),
+    '',
+    '$$'
+  ];
+  return lines.join('\n');
+}
+function bulletinText(x, d){
+  if (x.lv === 'outlook') return outlookBulletin(x, d);
+  if (x.lv === 'advisory') return rareBulletin(x, d);
+  if (x.lv === 'rare') return rareTempBulletin(x, d);
+  const S = alertName(x).toUpperCase(), L = x.lv.toUpperCase();
+  const it = bulletinTime(d, alertRegion(x)), issued = new Date(it.date+'T00:00:00Z');
+  const stOf = k => isCapitalKey(k) ? k : k.split(', ').pop();
+  const stCodes = x.counties && x.counties.length ? x.counties.map(c=>byFips[String(c[0]).slice(0,2)]).filter(Boolean) : x.m.map(m=>stOf(m[0]));
+  const states = [...new Set(stCodes)].sort().map(a=>(STATE_NAME[a]||a).toUpperCase());
+  const first = x.m.reduce((a,m)=>m[1]<a?m[1]:a, x.m[0][1]), last = x.m.reduce((a,m)=>m[1]>a?m[1]:a, x.m[0][1]);
+  const vals = x.m.map(m=>m[2]);
+  // which way is it going? progression (e.g. autumn -> winter) or a step back (e.g. spring -> winter)
+  const froms = {}; for (const m of x.m) if (m[3] && m[3] !== x.s) froms[m[3]] = (froms[m[3]]||0) + 1;
+  const fromList = Object.keys(froms).sort((a,b)=>froms[b]-froms[a]);
+  const fwd = fromList.filter(f=>CYCLE_NEXT[f] === x.s), back = fromList.filter(f=>CYCLE_NEXT[f] !== x.s);
+  const fwdN = fwd.reduce((s,f)=>s+froms[f],0), backN = back.reduce((s,f)=>s+froms[f],0);
+  const dirWord = fwdN && backN ? 'mixed' : backN ? 'back' : 'forward';
+  const fromTxt = arr => arr.map(f=>f.toUpperCase()).join(' AND ');
+  const headline = x.ex === 'latefreeze' ? '...A HARD FREEZE RETURNS AFTER SPRING HAD SETTLED IN...'
+    : x.ex === 'summerreturns' ? '...SUMMER HEAT RETURNS AFTER AUTUMN HAD SETTLED IN...'
+    : dirWord === 'back' ? `...${S} RETURNS TO AREAS ALREADY IN ${fromTxt(back)}...`
+    : dirWord === 'mixed' ? `...${S} ARRIVES IN AREAS STILL IN ${fromTxt(fwd)} AND RETURNS TO AREAS ALREADY IN ${fromTxt(back)}...`
+    : `...${S} ARRIVES IN AREAS STILL IN ${fromTxt(fwd) || NAME[Object.keys(CYCLE_NEXT).find(k=>CYCLE_NEXT[k]===x.s)].toUpperCase()}...`;
+  const backNote = {
+    winter: 'THIS WOULD BE A LATE-SEASON SETBACK, WITH A HARD FREEZE AFTER MILDER WEATHER HAD ALREADY TAKEN HOLD.',
+    spring: 'THIS WOULD BE A STEP BACK FROM SUMMER, WITH THE HEAT BREAKING BEFORE ITS TIME.',
+    summer: 'THIS WOULD BE A RETURN OF SUMMER HEAT, A WARM SPELL AFTER AUTUMN HAD ALREADY ARRIVED.',
+    autumn: 'THIS WOULD BE A THAW, EASING WINTER BACK TO AUTUMN FOR A WHILE.'
+  }[x.s];
+  const countyLines = [];
+  if (x.counties && x.counties.length){
+    const byState = {};
+    for (const [fips, nm] of x.counties){ const ab = byFips[String(fips).slice(0,2)] || '??'; (byState[ab] = byState[ab] || []).push(nm.toUpperCase()); }
+    for (const ab of Object.keys(byState).sort()){
+      const list = byState[ab].sort();
+      countyLines.push(wrap(`IN ${(STATE_NAME[ab]||ab).toUpperCase()} THIS ${L} INCLUDES ${list.length} COUNT${list.length===1?'Y':'IES'}: ${list.join(', ')}.`), '');
+    }
+  }
+  const what = x.ex === 'latefreeze'
+    ? `OVERNIGHT LOWS AS COLD AS ${Math.min(...vals)} DEGREES ARE FORECAST AFTER AT LEAST A WEEK OF SPRING. TENDER PLANTS, BLOSSOMS AND NEW GROWTH ARE AT RISK.`
+    : x.ex === 'summerreturns'
+    ? `HIGHS OF ${Math.min(...vals)} DEGREES OR WARMER ARE FORECAST FOR FIVE STRAIGHT DAYS AFTER AT LEAST A WEEK OF AUTUMN. SUMMER RETURNS BY THIS MAP'S RULES.`
+    : {
+    winter: `OVERNIGHT LOWS AS COLD AS ${Math.min(...vals)} DEGREES ARE FORECAST. ONE NIGHT BELOW 28 DEGREES BRINGS WINTER BY THIS MAP'S RULES.`,
+    summer: `HIGHS OF ${Math.min(...vals)} DEGREES OR WARMER ARE FORECAST DAY AFTER DAY. FIVE STRAIGHT DAYS AT 75 DEGREES OR WARMER BRINGS SUMMER BY THIS MAP'S RULES.`,
+    spring: `HIGHS NEAR ${Math.min(...vals)} DEGREES ARE FORECAST WITHOUT A HARD FREEZE. THREE STRAIGHT DAYS AT 55 DEGREES OR WARMER BRINGS SPRING BY THIS MAP'S RULES.`,
+    autumn: `LOWS NEAR ${Math.min(...vals)} DEGREES ARE FORECAST ONCE THE WARM STRETCH BREAKS. A NIGHT BELOW 50 DEGREES AFTER THE HEAT BRINGS AUTUMN BY THIS MAP'S RULES.`
+  }[x.s];
+  const act = x.ex === 'latefreeze' ? 'COVER OR BRING IN TENDER PLANTS AND SEEDLINGS, AND PROTECT BLOOMING FRUIT TREES IF YOU CAN.'
+    : x.ex === 'summerreturns' ? 'GET THE FANS BACK OUT, STAY HYDRATED, AND ENJOY ONE MORE TASTE OF SUMMER.'
+    : {
+    winter: 'BRING IN TENDER PLANTS, DISCONNECT GARDEN HOSES, AND FIND THE ICE SCRAPER.',
+    summer: 'DIG OUT THE SHORTS, CHECK THE AIR CONDITIONER, AND KEEP WATER HANDY.',
+    spring: 'OPEN THE WINDOWS, CHECK THE GARDEN BEDS, AND KEEP A JACKET NEARBY FOR COOL NIGHTS.',
+    autumn: 'FIND A SWEATER, CLEAN THE GUTTERS, AND ENJOY THE CRISP NIGHTS.'
+  }[x.s];
+  const meaning = (x.ex === 'latefreeze' || x.ex === 'summerreturns') ? `${S} WARNINGS ARE ISSUED ONLY AFTER A SEASON HAS HELD FOR AT LEAST A WEEK AND THE FORECAST CLEARS THE RULE BY AT LEAST 1.5 DEGREES WITHIN ${DATA.warnDays} DAYS.`
+    : x.lv === 'warning'
+    ? `A ${S} WARNING MEANS THE FORECAST MEETS THE RULE WITH ROOM TO SPARE AND THE CHANGE IS EXPECTED WITHIN ${DATA.warnDays} DAYS.`
+    : `A ${S} WATCH MEANS THE CHANGE IS POSSIBLE IN THE NEXT ${DATA.watchDays} DAYS. FORECAST DETAILS MAY STILL SHIFT.`;
+  const nameOf = k => isCapitalKey(k) ? `${(DATA.states[k]?.city||k).toUpperCase()} ${k}` : k.toUpperCase().replace(', ', ' ');
+  const listed = x.m.slice(0, 10).map(m=>nameOf(m[0]));
+  const where = x.m.length > 10 ? listed.concat([`AND ${x.m.length - 10} OTHER LOCATIONS`]) : listed;
+  const latlon = x.box.map(p=>{ const ll = projUS.invert([p[0], p[1]]); return ll ? `${Math.round(ll[1]*100)} ${Math.round(-ll[0]*100)}` : null; }).filter(Boolean);
+  const doy = Math.round((Date.parse(d+'T00:00:00Z') - Date.UTC(+d.slice(0,4), 0, 1))/864e5) + 1;
+  const num = doy * 10 + x.i + 1;
+  const lines = [
+    'UNOFFICIAL - FOR FUN ONLY - NOT A NATIONAL WEATHER SERVICE PRODUCT',
+    '',
+    `CAPITAL SEASONS MAP SEASON FRONT ${L} NUMBER ${num}`,
+    `${it.text} ${issued.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}).toUpperCase().replace(/,/g,'')}`,
+    '',
+    headline,
+    '',
+    wrap(`THE CAPITAL SEASONS MAP HAS ISSUED A ${S} ${L} FOR PORTIONS OF ${states.length > 1 ? states.slice(0,-1).join(', ') + ' AND ' + states[states.length-1] : states[0]}.`),
+    '',
+    wrap(`* WHAT...${what}`),
+    '',
+    wrap(`* WHERE...${where.join(', ')}.`),
+    '',
+    wrap(`* WHEN...${first === last ? 'EXPECTED ' + longDay(first) : 'FROM ' + longDay(first) + ' THROUGH ' + longDay(last)}.`),
+    '',
+    wrap(`* ADDITIONAL DETAILS...${x.ex === 'earlyfreeze' ? 'SPRING ARRIVED EARLY HERE, AND A HARD FREEZE IS FORECAST TO BRING WINTER BACK. '
+      : x.ex === 'earlysummer' ? 'AUTUMN ARRIVED EARLY HERE, AND A RUN OF HOT DAYS IS FORECAST TO BRING SUMMER BACK. '
+      : dirWord !== 'forward' && !x.ex ? backNote + ' ' : ''}${meaning}`),
+    ...(x.falseType ? ['', wrap(`* ${RARE[x.falseType].name.toUpperCase()}...${{
+      falsespring: 'THE HATCHED PART OF THIS AREA IS FORECAST TO REACH SPRING AND THEN FALL BACK INTO WINTER WITHIN A WEEK, WITH LOWS AT LEAST 3 DEGREES BELOW 28. HOLD OFF ON TENDER PLANTING.',
+      falsesummer: 'THE HATCHED PART OF THIS AREA IS FORECAST TO REACH SUMMER AND THEN LOSE IT AGAIN WITHIN A WEEK, WITH LOWS AT LEAST 3 DEGREES BELOW 50. ENJOY THE WARMTH WHILE IT LASTS.',
+      falseautumn: 'THE HATCHED PART OF THIS AREA IS FORECAST TO TURN TO AUTUMN AND THEN SLIP BACK INTO SUMMER WITHIN A WEEK, WITH HIGHS AT LEAST 3 DEGREES ABOVE 75. DO NOT PACK AWAY THE FANS YET.',
+      falsewinter: 'THE HATCHED PART OF THIS AREA IS FORECAST TO GET ITS FIRST HARD FREEZE AND THEN THAW BACK OUT WITHIN A WEEK, WITH HIGHS AT LEAST 3 DEGREES ABOVE 55. WINTER IS KNOCKING BUT NOT STAYING.'
+    }[x.falseType]}`)] : []),
+    '',
+    'PRECAUTIONARY/PREPAREDNESS ACTIONS...',
+    '',
+    wrap(act),
+    '',
+    '&&',
+    '',
+    wrap('LAT...LON ' + latlon.join(' ')),
+    '',
+    '$$'
+  ];
+  return lines.join('\n');
+}
+const bul = document.getElementById('bulletin'), bulText = document.getElementById('bulText'), bulTitle = document.getElementById('bulTitle');
+let bulReturn = null;
+function openBulletin(x, d){
+  bulReturn = document.activeElement;
+  bulTitle.textContent = x.lv === 'advisory' ? `${alertName(x)} statement` : `${alertName(x)} ${levelWord(x)}`;
+  bul.style.setProperty('--wcol', alertCol(x));
+  bulText.textContent = bulletinText(x, d);
+  bul.hidden = false;
+  document.getElementById('bulClose').focus();
+}
+function closeBulletin(){ bul.hidden = true; if (bulReturn && bulReturn.focus) bulReturn.focus(); }
+document.getElementById('bulClose').onclick = closeBulletin;
+bul.addEventListener('click', e=>{ if (e.target === bul) closeBulletin(); });
+bul.addEventListener('keydown', e=>{ if (e.key === 'Escape') closeBulletin(); });
+document.getElementById('bulCopy').onclick = ()=>{
+  const btn = document.getElementById('bulCopy');
+  const done = ()=>{ btn.textContent = 'Copied'; setTimeout(()=>btn.textContent = 'Copy text', 1500); };
+  try {
+    navigator.clipboard.writeText(bulText.textContent).then(done, ()=>{ const r = document.createRange(); r.selectNodeContents(bulText); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'Text selected'; });
+  } catch(e){ const r = document.createRange(); r.selectNodeContents(bulText); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+};
+
+function setView(v){
+  view = v; frac = 0;
+  slider.step = (v === 'fronts' && frw) ? '0.05' : '1';
+  slider.value = state.day;
+  document.getElementById('vStates').setAttribute('aria-pressed', v==='states');
+  document.getElementById('vFronts').setAttribute('aria-pressed', v==='fronts');
+  if (state.playing) playBtn.click();
+  render();
+}
+document.getElementById('vStates').onclick = ()=>setView('states');
+document.getElementById('vFronts').onclick = ()=>setView('fronts');
+
+/* ---------- controls ---------- */
+const yearsEl = document.getElementById('years');
+for (const y of YEARS){ const b=document.createElement('button'); b.textContent=y; b.id='y'+y; b.onclick=()=>setYear(y); yearsEl.appendChild(b); }
+const slider = document.getElementById('slider');
+// In the Fronts view the slider moves in fractions of a day and the map glides toward wherever it is dragged.
+let glidePos = null, glideTarget = null, glideRaf = null;
+function glideStep(){
+  const diff = glideTarget - glidePos;
+  glidePos = Math.abs(diff) < 0.02 ? glideTarget : glidePos + diff * 0.22;
+  const day = Math.floor(glidePos), changed = day !== state.day;
+  state.day = day; frac = glidePos - day;
+  const done = glidePos === glideTarget;
+  if (done) render(); else if (changed) renderLite(); else { paintFronts(); paintWatches(curISO()); }
+  glideRaf = done ? null : requestAnimationFrame(glideStep);
+}
+slider.addEventListener('input',()=>{
+  const v = +slider.value;
+  if (view === 'fronts' && frw){
+    if (state.playing) playBtn.click();
+    if (glidePos === null || !glideRaf) glidePos = state.day + frac;
+    glideTarget = v;
+    if (!glideRaf) glideRaf = requestAnimationFrame(glideStep);
+  } else { state.day = Math.round(v); frac = 0; render(); }
+});
+
+// How far into the future the map is (days past the last observed day, with the glide fraction)
+function futureDays(d, f){ return Math.round((Date.parse(d+'T00:00:00Z') - Date.parse(DATA.obsEnd+'T00:00:00Z'))/864e5) + (f || 0); }
+function outlookLook(d, f){
+  const k = futureDays(d, f), fcLen = DATA.horizon || 10;
+  // the CFS part fades in its veil and dims the fronts a little more the further out it goes
+  const veilOp = k <= fcLen ? 0 : Math.min(0.32, 0.12 + (k - fcLen) / 60 * 0.2);
+  veil.attr('opacity', veilOp);
+  const dim = k <= fcLen ? 1 : Math.max(0.6, 1 - (k - fcLen) / 90 * 0.4);
+  lineLayer.attr('opacity', dim < 1 ? dim : null); extLayer.attr('opacity', dim < 1 ? dim : null);
+  stampTag.text(k <= 0 ? '' : k <= fcLen ? 'FORECAST' : 'CFS OUTLOOK');
+}
+function paintFutureBand(y, mx){
+  const band = document.getElementById('futband'); if (!band) return;
+  const pos = iso => (Date.parse(iso+'T00:00:00Z') - utc(y,0,1)) / 864e5 / mx * 100;
+  const clamp = v => Math.max(0, Math.min(100, v));
+  const a = clamp(pos(nextDay(DATA.obsEnd))), b = clamp(pos(DATA.fcEnd || DATA.obsEnd)), c = clamp(pos(LAST));
+  const [fcz, cfz] = band.children;
+  fcz.style.left = a + '%'; fcz.style.width = Math.max(0, b - a) + '%';
+  cfz.style.left = b + '%'; cfz.style.width = Math.max(0, c - b) + '%';
+  band.hidden = !(mx > 0) || c <= 0 || a >= 100;
+}
+function setYear(y, keepDay){
+  const prevMonthDay = curISO().slice(5);
+  state.year = y;
+  const mx = maxDay(y); slider.max = mx;
+  let d = Math.round((new Date(`${y}-${prevMonthDay}T00:00:00Z`)-utc(y,0,1))/864e5);
+  if (isNaN(d)) d = 0;
+  state.day = keepDay===undefined ? Math.min(d,mx) : Math.min(keepDay,mx);
+  slider.value = state.day;
+  paintFutureBand(y, mx);
+  for (const b of yearsEl.children) b.setAttribute('aria-pressed', b.textContent==y);
+  const months = document.getElementById('months'); months.innerHTML='';
+  for (let m=0;m<12;m++){
+    const dd = (utc(y,m,1)-utc(y,0,1))/864e5; if (dd>mx) break;
+    if (window.innerWidth<520 && m%3) continue;
+    const s=document.createElement('span'); s.textContent=MON[m]; s.style.left = (dd/mx*100)+'%';
+    if (dd/mx > .94) s.style.transform='translateX(-100%)';
+    months.appendChild(s);
+  }
+  renderTable(); render();
+}
+function goLatest(){ setYear(CUR_YEAR, Math.round((Date.parse(DATA.obsEnd+'T00:00:00Z') - utc(CUR_YEAR,0,1))/864e5)); }
+
+// While the fronts are gliding or playing, a new day only redraws the map, the date and the counts;
+// the side panels and key catch up as soon as the motion stops.
+function renderLite(){
+  const d = curISO(), dt = new Date(d+'T00:00:00Z');
+  document.getElementById('date').firstChild.nodeValue = `${MON[dt.getUTCMonth()]} ${dt.getUTCDate()}`;
+  document.getElementById('dateSub').textContent = `${dt.toLocaleDateString('en-US',{weekday:'long',timeZone:'UTC'})}, ${state.year}` + (atLatest()?' · latest':isFuture(d)?(isOutlook(d)?' · outlook':' · forecast'):'');
+  const counts = {spring:0,summer:0,autumn:0,winter:0};
+  for (const ab of Object.keys(DATA.states)){ const e = seasonOn(ab, d); if (e) counts[e[1]]++; }
+  paintFronts(); checkTurnover(d); paintWatches(d);
+  document.getElementById('counts').innerHTML = SEASONS.map(s=>`<span class="chip"><i class="sw" style="background:var(--${s})"></i>${NAME[s]} <b>${counts[s]}</b></span>`).join('');
+}
+function render(){
+  const d = curISO();
+  const dt = new Date(d+'T00:00:00Z');
+  document.getElementById('date').firstChild.nodeValue = `${MON[dt.getUTCMonth()]} ${dt.getUTCDate()}`;
+  document.getElementById('dateSub').textContent = `${dt.toLocaleDateString('en-US',{weekday:'long',timeZone:'UTC'})}, ${state.year}` + (atLatest()?' · latest':isFuture(d)?(isOutlook(d)?' · outlook':' · forecast'):'');
+  const counts = {spring:0,summer:0,autumn:0,winter:0};
+  shapes.attr('fill', f=>{ const e = seasonOn(byFips[f.id], d); if(!e) return 'var(--nodata)'; counts[e[1]]++; return `var(--${e[1]})`; })
+        .classed('sel', f=>byFips[f.id]===state.sel);
+  const fr = view==='fronts' && frw;
+  for (const L of [fillLayer, borderLayer, lineLayer, extLayer, stamp]) L.attr('display', fr ? null : 'none');
+  document.querySelector('.plate').classList.toggle('tv', !!fr);
+  ringLayer.attr('display', fr ? 'none' : null);
+  if (fr){ paintFronts(); checkTurnover(d); } else { lastFrontDate = null; outlookLook(d, 0); }
+  document.getElementById('watchToggle').hidden = !fr || !Object.keys(WLOG).length;
+  document.getElementById('extToggle').hidden = !fr;
+  paintWatches(d);
+  document.getElementById('counts').innerHTML = SEASONS.map(s=>`<span class="chip"><i class="sw" style="background:var(--${s})"></i>${NAME[s]} <b>${counts[s]}</b></span>`).join('');
+  const live = atLatest(), logged = hasLog(d);
+  const rings = logged ? feats.filter(f=>predFor(byFips[f.id], d)) : [];
+  ringLayer.selectAll('path').data(rings, f=>f.id).join('path')
+    .attr('d',path).attr('clip-path',f=>`url(#clip${f.id})`)
+    .attr('class',f=>'ring '+predFor(byFips[f.id], d).conf)
+    .attr('stroke',f=>edge(predFor(byFips[f.id], d).season));
+  const legend = `<span><svg viewBox="0 0 22 14"><rect x="2" y="2" width="18" height="10" rx="2" fill="none" stroke="var(--muted)" stroke-width="3"/></svg>Likely change</span><span><svg viewBox="0 0 22 14"><rect x="2" y="2" width="18" height="10" rx="2" fill="none" stroke="var(--muted)" stroke-width="3" stroke-dasharray="4 3"/></svg>Possible change</span><span>Outline color = season it may enter</span>`;
+  const jump = `<button class="jump" id="jump">Jump to latest</button>`;
+  const frOn = view==='fronts' && frw;
+  const frKey = frOn ? `<span><svg viewBox="0 0 22 14" aria-hidden="true"><path d="M1 10H21" stroke="var(--coldfront)" stroke-width="2.5"/><path d="M6 10L11 3L16 10Z" fill="var(--coldfront)"/></svg>Cold front</span><span><svg viewBox="0 0 22 14" aria-hidden="true"><path d="M1 10H21" stroke="var(--warmfront)" stroke-width="2.5"/><path d="M5 10A6 6 0 0 1 17 10Z" fill="var(--warmfront)"/></svg>Warm front</span><span><svg viewBox="0 0 22 14" aria-hidden="true"><path d="M1 10H11" stroke="var(--warmfront)" stroke-width="2.5"/><path d="M11 10H21" stroke="var(--coldfront)" stroke-width="2.5"/></svg>Stalled</span>${showArctic ? `<span class="${frw.extOn && frw.extOn.arctic ? '' : 'dim'}"><svg viewBox="0 0 26 16" aria-hidden="true"><path d="M1 11H25" stroke="var(--arctic)" stroke-width="2.5"/><path d="M4 11L6.5 2L9 11ZM9 11L11.5 2L14 11Z" fill="var(--arctic)"/><path d="M17 8L23 14M23 8L17 14M20 7V15" stroke="var(--arctic)" stroke-width="1.6"/></svg>Arctic front: lows below 0°F</span>` : ''}${showArctic ? `<span class="${frw.rareOn && frw.rareOn.arctic ? '' : 'dim'}"><svg viewBox="0 0 26 16" aria-hidden="true"><path d="M1 11H25" stroke="#ffffff" stroke-width="4.5" stroke-dasharray="7 4" stroke-opacity=".75"/><path d="M1 11H25" stroke="var(--arctic)" stroke-width="2.5" stroke-dasharray="7 4"/></svg>Local Arctic front: lows in that place's coldest 1% of days, but not below 0°F</span><span class="${frw.haloOn ? '' : 'dim'}"><svg viewBox="0 0 26 16" aria-hidden="true"><path d="M1 8H25" stroke="#e6c4ff" stroke-width="9"/><path d="M1 8H25" stroke="#ffffff" stroke-width="5"/><path d="M1 8H25" stroke="var(--arctic)" stroke-width="2.5"/></svg>Glowing edge: that cold is rare there too · wider and soft bright patches at the rarest 0.25%</span>` : ''}${showWatches && Object.keys(WLOG).length ? `<span class="${watchesFor(d) && watchesFor(d).length ? '' : 'dim'}"><svg viewBox="0 0 22 14" aria-hidden="true"><rect x="2" y="2" width="18" height="10" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 3"/></svg>Watch</span><span class="${watchesFor(d) && watchesFor(d).length ? '' : 'dim'}"><svg viewBox="0 0 22 14" aria-hidden="true"><rect x="2" y="2" width="18" height="10" fill="none" stroke="var(--muted)" stroke-width="3"/></svg>Warning</span>${DATA.cfsRuns && DATA.cfsRuns.length ? `<span class="${(watchesFor(d) || []).some(x=>x.lv==='outlook') ? '' : 'dim'}"><svg viewBox="0 0 22 14" aria-hidden="true"><rect x="2" y="2" width="18" height="10" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="1.5 4" stroke-linecap="round"/></svg>Outlook (CFS, weeks 2–4)</span>` : ''}<span class="${watchesFor(d) && watchesFor(d).length ? '' : 'dim'}"><svg viewBox="0 0 22 14" aria-hidden="true"><defs><pattern id="lgh" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="var(--muted)" stroke-width="2"/></pattern></defs><rect x="2" y="2" width="18" height="10" fill="url(#lgh)" stroke="var(--muted)" stroke-width="1.5"/></svg>Hatched: won't last, expected to flip back within a week · click any area for its bulletin</span><span class="${watchesFor(d) && watchesFor(d).some(x=>x.lv==='rare') ? '' : 'dim'}"><svg viewBox="0 0 22 14" aria-hidden="true"><rect x="2" y="2" width="18" height="10" fill="#c77dff" fill-opacity=".2" stroke="#c77dff" stroke-width="2" stroke-dasharray="3 2.5"/></svg>Rare cold / heat advisory (1%) · solid = warning (0.25%)</span>` : ''}<span>Symbols point the way each front is moving · seasons here follow each day's weather, with no calendar · ${FR.points} weather points</span>${live ? jump.replace('class="jump"', 'class="jump" style="visibility:hidden" tabindex="-1" aria-hidden="true"') : jump}` : '';
+  document.getElementById('key').innerHTML = frOn ? frKey : isFuture(d) ? `<span>${isOutlook(d) ? 'CFS outlook · projected seasons, low confidence' : 'From the 10-day forecast'}</span>${jump}` : (live ? legend
+    : logged ? `<span>Forecast as of ${fmtPlain(nextDay(d))} morning</span>${legend}${jump}`
+    : `<span>No forecast saved for this day</span>${jump}`);
+  const j = document.getElementById('jump'); if (j) j.onclick = goLatest;
+  renderDetail(d, counts);
+  renderWatch(d);
+}
+
+function forecastStrip(fc){
+  if (!fc || !fc.length) return '';
+  return `<p class="eyebrow" style="margin-top:14px">Next ${fc.length} days · high / low °F</p><div class="fc">${fc.map(([d,h,l])=>{
+    const w = new Date(d+'T00:00:00Z').toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'});
+    return `<div>${w} ${+d.slice(8)}<b>${h}°</b><span class="lo">${l}°</span></div>`; }).join('')}</div>`;
+}
+
+function renderDetail(d, counts){
+  const el = document.getElementById('detail');
+  if (!state.sel){
+    const lead = SEASONS.reduce((a,b)=>counts[b]>counts[a]?b:a);
+    el.innerHTML = `<p class="eyebrow">Selected capital</p><h2>None yet</h2>
+      <p class="hint">Tap a state on the map, the watch list, or a table row to see its capital's start dates and 10-day forecast.</p>
+      <p class="hint">On this date ${counts[lead]} of 51 capitals are in ${NAME[lead].toLowerCase()}.</p>`;
+    return;
+  }
+  const s = DATA.states[state.sel], e = seasonOn(state.sel, d), st = startsFor(state.sel, state.year);
+  const since = e ? dayDiff(d, e[0]) : null;
+  let predHtml = '';
+  if (atLatest()){
+    predHtml = s.pred
+      ? `<div class="pred" style="--edge:${edge(s.pred.season)}"><b>May enter ${NAME[s.pred.season].toLowerCase()} ${fmtPlain(s.pred.date)}</b> ${confTag(s.pred)}<br><span class="hint" style="margin:0">${whyText(s.pred)}</span></div>`
+      : `<div class="pred"><b>No season change expected</b> in the next ${DATA.horizon} days.</div>`;
+    predHtml += forecastStrip(s.fc);
+  } else if (isFuture(d)){
+    predHtml = `<div class="pred"><span class="eyebrow" style="display:block;margin:0 0 4px">${isOutlook(d) ? 'CFS outlook' : 'Forecast'}</span>${isOutlook(d) ? 'Projected from the latest CFS runs. Long-range, low confidence, and it shifts from day to day.' : 'From this morning\'s 10-day forecast.'}</div>`;
+  } else if (hasLog(d)){
+    const p = predFor(state.sel, d);
+    if (p){
+      const o = outcome(state.sel, p);
+      predHtml = `<div class="pred" style="--edge:${edge(p.season)}"><span class="eyebrow" style="display:block;margin:0 0 4px">Forecast as of ${fmtPlain(nextDay(d))}</span><b>May enter ${NAME[p.season].toLowerCase()} ${fmtPlain(p.date)}</b> ${confTag(p)}<br><span class="outcome ${o.ok===true?'yes':o.ok===false?'no':''}">${mark(o)} ${o.text}</span></div>`;
+    } else predHtml = `<div class="pred"><span class="eyebrow" style="display:block;margin:0 0 4px">Forecast as of ${fmtPlain(nextDay(d))}</span>No season change was expected.</div>`;
+  }
+  el.innerHTML = `<p class="eyebrow">${state.sel} · state capital</p><h2>${s.city}</h2>
+    <div class="now">${e?`<i class="sw" style="background:var(--${e[1]})"></i>${NAME[e[1]]} <span>since ${fmt(e[0])}${e[3]===1?' (fallback)':''}, ${since} day${since===1?'':'s'}</span>`:'No season yet'}</div>
+    <p class="eyebrow">${state.year} start dates</p>
+    <dl class="dl">${SEASONS.map(k=>`<dt><i class="sw" style="background:var(--${k})"></i>${NAME[k]}</dt><dd${st[k]&&(st[k].fb||st[k].proj)?` class="fb" title="${st[k].proj?'Projected by the CFS outlook':'Fallback date'}"`:''}>${st[k]?(st[k].proj?'~':'')+fmt(st[k].d)+(st[k].fb?' *':''):(windowOpen(k,state.year,state.sel)?'not yet':'skipped')}</dd>`).join('')}</dl>
+    ${predHtml}`;
+}
+
+function renderWatch(d){
+  const el = document.getElementById('watchCard');
+  if (isFuture(d)){
+    const runs = (DATA.cfsRuns || []).map(r=>`${r.slice(4,6)}/${r.slice(6,8)} ${r.slice(8)}Z`).join(', ');
+    const soon = Object.keys(DATA.states).map(ab=>{ const e = (DATA.states[ab].outlook || []).find(x=>x[0] > d); return e ? [ab, e] : null; })
+      .filter(Boolean).sort((a,b)=>a[1][0].localeCompare(b[1][0]) || a[0].localeCompare(b[0])).slice(0, 8);
+    el.innerHTML = `<p class="eyebrow">${isOutlook(d) ? 'CFS outlook · low confidence' : 'Forecast'}</p><h2>${isOutlook(d) ? 'A rough look ahead' : 'Inside the 10-day forecast'}</h2>
+      <p class="hint">${isOutlook(d) ? `Past the 10-day forecast the map uses NOAA's Climate Forecast System: the average of its latest ${(DATA.cfsRuns||[]).length || 4} runs (${runs}), shifted to each place's own climate. Think of it as a trend, not a forecast.` : 'These days come from the regular forecast; the CFS outlook takes over after ' + fmtPlain(DATA.fcEnd) + '.'}</p>`
+      + (soon.length ? `<p class="eyebrow" style="margin-top:12px">Next projected changes</p><ul class="watch">${soon.map(([ab,e])=>`<li><button data-ab="${ab}"><span class="ab">${ab}</span><span class="to"><i class="sw" style="background:var(--${e[1]})"></i>${NAME[e[1]]}<span class="tag" style="color:var(--muted)">outlook</span></span><span class="when">~${fmt(e[0])}</span></button></li>`).join('')}</ul>` : '');
+    el.querySelectorAll('button[data-ab]').forEach(b=>b.onclick=()=>{ state.sel=null; select(b.dataset.ab); });
+    return;
+  }
+  if (!hasLog(d)){
+    el.innerHTML = `<p class="eyebrow">Forecast</p><h2>Nothing saved for ${fmtPlain(d)}</h2><p class="hint">Past forecasts are available from Jan 1, 2022. This day's archived forecast run is missing. Scroll to a nearby day or jump to the latest.</p>`;
+    return;
+  }
+  const live = d===DATA.obsEnd;
+  const list = Object.keys(DATA.states).map(ab=>[ab, predFor(ab,d)]).filter(([,p])=>p).sort((a,b)=>a[1].date.localeCompare(b[1].date)||a[0].localeCompare(b[0]));
+  const head = live ? `Next ${DATA.horizon} days · through ${fmtPlain(DATA.fcEnd)}` : `Forecast as of ${fmtPlain(nextDay(d))} morning`;
+  el.innerHTML = `<p class="eyebrow">${head}</p><h2>${list.length} capital${list.length===1?'':'s'} ${live?'may':'might'} change</h2>`
+    + (list.length ? `<ul class="watch">${list.map(([ab,p])=>{ const o = live?null:outcome(ab,p);
+        return `<li><button data-ab="${ab}"><span class="ab">${ab}</span><span class="to"><i class="sw" style="background:var(--${p.season})"></i>${NAME[p.season]}${confTag(p)}</span><span class="when">${fmtPlain(p.date)}${o?` <span class="outcome ${o.ok===true?'yes':o.ok===false?'no':''}" title="${o.text}">${mark(o)}</span>`:''}</span></button></li>`; }).join('')}</ul>`
+        + (live?'':`<p class="hint">✓ started within a day of the forecast · ✗ didn't · … still waiting</p>`)
+      : `<p class="hint">No capital was close to a new season in the forecast.</p>`);
+  el.querySelectorAll('button[data-ab]').forEach(b=>b.onclick=()=>{ state.sel=null; select(b.dataset.ab); });
+}
+
+function select(ab){ state.sel = state.sel===ab?null:ab; render(); renderTable(); }
+
+/* ---------- table ---------- */
+const COLS = [['ab','State'],['city','Capital'],['spring','Spring'],['summer','Summer'],['autumn','Autumn'],['winter','Winter']];
+function renderTable(){
+  document.getElementById('ledgerTitle').textContent = `${state.year} start dates by capital`;
+  const thead = document.querySelector('#table thead');
+  thead.innerHTML = '<tr>'+COLS.map(([k,l])=>`<th data-k="${k}" ${state.sort.key===k?`aria-sort="${state.sort.dir>0?'ascending':'descending'}"`:''}>${l}${state.sort.key===k?(state.sort.dir>0?' ↑':' ↓'):''}</th>`).join('')+'</tr>';
+  thead.querySelectorAll('th').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; state.sort = {key:k, dir: state.sort.key===k?-state.sort.dir:1}; renderTable(); });
+  const rows = Object.keys(DATA.states).map(ab=>({ab, city:DATA.states[ab].city, ...startsFor(ab,state.year)}));
+  const {key,dir} = state.sort;
+  const val = (r,k) => k==='ab'||k==='city' ? r[k] : (r[k]?r[k].d:'~');
+  rows.sort((a,b)=>{ const x=val(a,key), y=val(b,key); return (x<y?-1:x>y?1:0)*dir; });
+  document.querySelector('#table tbody').innerHTML = rows.map(r=>`<tr data-ab="${r.ab}" class="${r.ab===state.sel?'sel':''}"><td><b>${r.ab}</b></td><td>${r.city}</td>${SEASONS.map(k=>r[k]?`<td class="d${r[k].fb||r[k].proj?' fb':''}"${r[k].fb?' title="Fallback date"':r[k].proj?' title="Projected by the CFS outlook"':''}>${r[k].proj?'~':''}${fmt(r[k].d)}${r[k].fb?' *':''}</td>`:`<td class="d na">${windowOpen(k,state.year,r.ab)?'not yet':'skipped'}</td>`).join('')}</tr>`).join('');
+  document.querySelectorAll('#table tbody tr').forEach(tr=>tr.onclick=()=>select(tr.dataset.ab));
+}
+
+/* ---------- play ---------- */
+let timer=null;
+const playBtn = document.getElementById('play'), icon = document.getElementById('playIcon');
+playBtn.onclick = ()=>{
+  state.playing = !state.playing;
+  icon.innerHTML = state.playing ? '<path d="M3 2h4v12H3zM9 2h4v12H9z"/>' : '<path d="M4 2l10 6-10 6z"/>';
+  playBtn.setAttribute('aria-label', state.playing?'Pause':'Play through the year');
+  if (state.playing){
+    if (state.day >= +slider.max) { state.day = 0; frac = 0; }
+    if (view==='fronts' && frw){
+      let last = 0;
+      const tick = (ts)=>{
+        if (!state.playing) return;
+        const dtMs = last ? Math.min(ts-last, 100) : 0; last = ts;
+        frac += dtMs/170;
+        let dayChanged = false;
+        while (frac >= 1){ frac -= 1; state.day++; dayChanged = true; }
+        if (state.day >= +slider.max){ state.day = +slider.max; frac = 0; slider.value = state.day; render(); playBtn.click(); return; }
+        slider.value = state.day + frac;
+        if (dayChanged) renderLite(); else { paintFronts(); paintWatches(curISO()); }
+        timer = requestAnimationFrame(tick);
+      };
+      timer = requestAnimationFrame(tick);
+    } else {
+      timer = setInterval(()=>{ state.day++; if (state.day > +slider.max){ state.day = +slider.max; playBtn.click(); } slider.value=state.day; render(); }, 55);
+    }
+  } else { clearInterval(timer); cancelAnimationFrame(timer); frac = 0; render(); }
+};
+
+(function stamp(){
+  const [d,t] = DATA.updated.split('T'); let [h,m] = t.split(':').map(Number);
+  const ap = h>=12?'PM':'AM'; h = h%12||12;
+  document.getElementById('stamp').textContent = `Updated ${fmtPlain(d)}, ${h}:${String(m).padStart(2,'0')} ${ap} ET · observed through ${fmtPlain(DATA.obsEnd)} · forecast through ${fmtPlain(DATA.fcEnd)}${LAST > DATA.fcEnd ? ` · CFS outlook through ${fmtPlain(LAST)}` : ''}`;
+})();
+document.getElementById('foot').innerHTML = `Daily highs and lows come from <a href="https://open-meteo.com/en/docs/historical-weather-api" target="_blank" rel="noopener">Open-Meteo</a>: the historical archive (gridded reanalysis at each capital's coordinates, in °F) back to Sep 2023, with the most recent days and the ${DATA.horizon}-day outlook from its forecast models. Gridded values can differ from the official airport station by a few degrees, especially in mountain and coastal cities like Juneau. Outlines on past days before Oct 24, 2026 were rebuilt from archived National Blend of Models extended forecasts for each capital's airport (via the <a href="https://mesonet.agron.iastate.edu/mos/" target="_blank" rel="noopener">Iowa Environmental Mesonet</a>), using the run available each morning; airport forecasts can run a few degrees off the gridded observations. The Fronts view gives every capital and 274 more cities (3–8 per state) a season that follows each day's weather with no calendar, so seasons can advance and fall back; a place switches to spring only after about a month of winter (otherwise a warm spell sends it back to autumn) and to autumn only after about a month of summer. Before March 2026 it uses the capitals only, so those fronts are coarser. The page rebuilds every morning around 6 AM ET. Washington, DC is included as the 51st capital.`;
+
+goLatest();
+</script>
